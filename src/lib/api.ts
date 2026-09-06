@@ -237,11 +237,23 @@ export interface GroupOut {
   members: PublicUser[];
   created_at: string;
 }
+export type AttachmentKind = "image" | "audio" | "video" | "pdf" | "file";
+export interface Attachment {
+  url: string;
+  name: string;
+  size: number;
+  type: string;
+  kind: AttachmentKind;
+  duration?: number | null;
+  width?: number | null;
+  height?: number | null;
+}
 export interface MessageOut {
   id: string;
   sender: PublicUser;
   body: string;
   attachment_url: string | null;
+  attachment: Attachment | null;
   deleted: boolean;
   created_at: string;
   edited_at: string | null;
@@ -368,10 +380,10 @@ export const Chat = {
     }),
   groupMessages: (groupId: string, after?: string) =>
     api<MessageOut[]>(`/chat/groups/${groupId}/messages${after ? `?after=${after}` : ""}`),
-  postGroup: (groupId: string, body: string, attachment_url?: string) =>
+  postGroup: (groupId: string, body: string, attachment?: Attachment | null) =>
     api<MessageOut>(`/chat/groups/${groupId}/messages`, {
       method: "POST",
-      body: { body, attachment_url: attachment_url ?? null },
+      body: { body, attachment: attachment ?? null },
     }),
   editGroup: (groupId: string, messageId: string, body: string) =>
     api<MessageOut>(`/chat/groups/${groupId}/messages/${messageId}`, {
@@ -384,6 +396,14 @@ export const Chat = {
   openDm: (username: string) =>
     api<DMThreadOut>(`/chat/dms/${encodeURIComponent(username)}`, { method: "POST" }),
   dmMessages: (threadId: string) => api<MessageOut[]>(`/chat/dms/thread/${threadId}/messages`),
-  postDm: (threadId: string, body: string) =>
-    api<MessageOut>(`/chat/dms/thread/${threadId}/messages`, { method: "POST", body: { body } }),
+  postDm: (threadId: string, body: string, attachment?: Attachment | null) =>
+    api<MessageOut>(`/chat/dms/thread/${threadId}/messages`, {
+      method: "POST",
+      body: { body, attachment: attachment ?? null },
+    }),
+  uploadAttachment: (file: { uri: string; name: string; type: string }) => {
+    const form = new FormData();
+    form.append("file", file as unknown as Blob);
+    return api<Attachment>("/chat/upload", { method: "POST", form });
+  },
 };

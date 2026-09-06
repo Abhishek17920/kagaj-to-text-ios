@@ -31,6 +31,9 @@ as the web version. Same backend (`kagaj-to-text-back`), same login, same files.
 | Link regions outlined on their PDF pages | `PdfPane` `regions` prop |
 | Chat: user search, direct messages, groups (create + members) with `@username` | `app/(app)/chat/*` |
 | Chat: **edit / delete** own group messages (long‑press) | `chat/thread.tsx` → `Chat.editGroup` / `Chat.deleteGroup` |
+| Chat **attachments**: photo / camera / document, in‑bubble image thumbnails + lightbox, doc cards with tap‑to‑download‑then‑open | `AttachmentBubble.tsx`, `Chat.uploadAttachment` |
+| Chat **voice notes** — hold the mic to record, release to send; in‑bubble player with scrubber | `chat/thread.tsx` (`expo-audio`), `AttachmentBubble.tsx` |
+| Chat messages animate in (reanimated `FadeInUp`) | `chat/thread.tsx` |
 | Annotation model is byte‑compatible with the web (`{ items: [...] }`, 0..1 coords) | `src/lib/annot.ts` |
 
 Coordinates are stored as fractions of the page, so a page drawn on iPad opens
@@ -61,9 +64,14 @@ Address forms: `http://192.168.1.8:8010` (same Wi-Fi, **no** `/api`) or
 
 ```bash
 cd kagaj-to-text-ios
-npm install
+npm install                # .npmrc sets legacy-peer-deps (react-dom peer skew)
 npx expo install --fix     # aligns native package versions to the Expo SDK
 ```
+
+Chat attachments/voice notes need a **backend** with `POST /chat/upload` and
+`storage/chat/` serving (present in this repo's `kagaj-to-text-back`). Chat
+media packages (`expo-image-picker`, `expo-audio`, `expo-sharing`) are config
+plugins — run `npx expo prebuild -p ios --clean` after pulling this change.
 
 ## 3. Run on your iPad / iPhone (you have a Mac + Apple Developer account)
 

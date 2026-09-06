@@ -17,6 +17,9 @@
         "UISupportsDocumentBrowser": true,
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocalNetworkUsageDescription": "Connect to the Kagaj to Text server running on your computer over Wi-Fi.",
+        "NSMicrophoneUsageDescription": "Record voice notes to send in chat.",
+        "NSCameraUsageDescription": "Take photos to send in chat.",
+        "NSPhotoLibraryUsageDescription": "Attach photos to your chat messages.",
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         }
@@ -27,7 +30,20 @@
       "expo-secure-store",
       "expo-splash-screen",
       "expo-document-picker",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Attach photos to your chat messages.",
+          "cameraPermission": "Take photos to send in chat."
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Record voice notes to send in chat."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
