@@ -35,6 +35,9 @@ as the web version. Same backend (`kagaj-to-text-back`), same login, same files.
 | **Connected regions panel** ("Links" button) — every link listed with a page tag, editable annotation text, Jump and Unlink | `workspace/[id].tsx` |
 | **Read aloud** the PDF summary (`expo-speech` TTS) | `pdf/[id].tsx` |
 | **Connector line** note ↔ region (iPad split view, on "Jump"; tracks scrolling) | `src/components/ConnectorLine.tsx` |
+| **Region grouping + wires** — multi-select links in the Connected panel, "⛓ Group", grouped regions share an outline colour on the PDF | `workspace/[id].tsx`, `PdfPane` `groupColors` |
+| **Zoom writing** (Notability-style) — write large in a bottom strip, the ink maps into a small moving band on the page; "Next line" advances it | `src/components/ZoomWriteBox.tsx`, `annot.ts` `mapItemToRegion` |
+| **PDF tabs** — proper tab bar for multiple PDFs in the split view | `workspace/[id].tsx` |
 | Link regions outlined on their PDF pages | `PdfPane` `regions` prop |
 | Chat: user search, direct messages, groups (create + members) with `@username` | `app/(app)/chat/*` |
 | Chat: **edit / delete** own group messages (long‑press) | `chat/thread.tsx` → `Chat.editGroup` / `Chat.deleteGroup` |

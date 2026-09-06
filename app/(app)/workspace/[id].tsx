@@ -70,6 +70,8 @@ export default function Workspace() {
   const [linkMode, setLinkMode] = useState(false);
   const [linksOpen, setLinksOpen] = useState(false);
   const [nbPageIdx, setNbPageIdx] = useState(0);
+  const [groups, setGroups] = useState<string[][]>([]);
+  const [selLinks, setSelLinks] = useState<string[]>([]);
   const [splitPct, setSplitPct] = useState(0.5);
   const splitStart = useRef(0.5);
   const [flash, setFlash] = useState<Flash | null>(null);
@@ -202,6 +204,24 @@ export default function Workspace() {
     [notes, pdfId],
   );
 
+  const GROUP_COLORS = ["#2563eb", "#e11d48", "#059669", "#9333ea", "#d97706"];
+  const groupColors = useMemo(() => {
+    const map: Record<string, string> = {};
+    groups.forEach((g, i) => g.forEach((id) => (map[id] = GROUP_COLORS[i % GROUP_COLORS.length])));
+    return map;
+  }, [groups]);
+
+  const groupSelected = () => {
+    if (selLinks.length < 2) return;
+    setGroups((prev) => [
+      ...prev.filter((g) => !g.some((id) => selLinks.includes(id))),
+      [...selLinks],
+    ]);
+    setSelLinks([]);
+  };
+  const toggleSel = (id: string) =>
+    setSelLinks((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
   if (err && !nb) return <Screen><ErrorNote message={err} /></Screen>;
   if (!nb) return <Screen><Loading label="Opening split view…" /></Screen>;
 
@@ -258,6 +278,7 @@ export default function Workspace() {
       shapeAssist={shapeAssist}
       onFocus={() => setFocused("pdf")}
       regions={regions}
+      groupColors={groupColors}
       highlight={flash}
       linkMode={linkMode || !!linkingNote}
       onPickRegion={pickRegion}
@@ -302,16 +323,17 @@ export default function Workspace() {
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.pdfBar}
-          contentContainerStyle={{ gap: 8, paddingHorizontal: 12, alignItems: "center" }}
+          contentContainerStyle={{ paddingHorizontal: 6, alignItems: "flex-end" }}
         >
           {pdfs.map((p) => (
             <Pressable
               key={p.id}
               onPress={() => setPdfId(p.id)}
-              style={[styles.pdfChip, p.id === pdfId && styles.pdfChipOn]}
+              style={[styles.pdfTab, p.id === pdfId && styles.pdfTabOn]}
             >
+              <Text style={styles.pdfTabIcon}>📄</Text>
               <Text
-                style={[styles.pdfChipText, p.id === pdfId && { color: "#fff" }]}
+                style={[styles.pdfTabText, p.id === pdfId && { color: C.brand }]}
                 numberOfLines={1}
               >
                 {p.filename}
@@ -434,9 +456,21 @@ export default function Workspace() {
         <Screen>
           <View style={styles.panelHead}>
             <Text style={styles.panelTitle}>Connected PDF regions ({linkCards.length})</Text>
-            <Pressable onPress={() => setLinksOpen(false)}>
-              <Text style={styles.hBtn}>Done</Text>
-            </Pressable>
+            <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
+              {selLinks.length >= 2 ? (
+                <Pressable onPress={groupSelected}>
+                  <Text style={styles.hBtn}>⛓ Group ({selLinks.length})</Text>
+                </Pressable>
+              ) : null}
+              {groups.length ? (
+                <Pressable onPress={() => { setGroups([]); setSelLinks([]); }}>
+                  <Text style={[styles.hBtn, { color: C.danger }]}>Ungroup all</Text>
+                </Pressable>
+              ) : null}
+              <Pressable onPress={() => setLinksOpen(false)}>
+                <Text style={styles.hBtn}>Done</Text>
+              </Pressable>
+            </View>
           </View>
           <ScrollView contentContainerStyle={{ gap: 10, paddingBottom: 24 }}>
             {linkCards.length === 0 ? (
@@ -445,9 +479,22 @@ export default function Workspace() {
               </Text>
             ) : null}
             {linkCards.map(({ link, noteId, body }) => (
-              <View key={link.id} style={styles.card}>
+              <View
+                key={link.id}
+                style={[
+                  styles.card,
+                  groupColors[link.id] ? { borderColor: groupColors[link.id], borderWidth: 2 } : null,
+                ]}
+              >
                 <View style={styles.cardTop}>
+                  <Pressable
+                    onPress={() => toggleSel(link.id)}
+                    style={[styles.check, selLinks.includes(link.id) && styles.checkOn]}
+                  >
+                    <Text style={styles.checkTxt}>{selLinks.includes(link.id) ? "✓" : ""}</Text>
+                  </Pressable>
                   <Text style={styles.cardPage}>PDF page {link.pdf_page}</Text>
+                  <View style={{ flex: 1 }} />
                   <View style={{ flexDirection: "row", gap: 14 }}>
                     <Pressable
                       onPress={() => {
@@ -482,18 +529,20 @@ export default function Workspace() {
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
   muted: { color: C.sub, textAlign: "center", lineHeight: 20 },
-  pdfBar: { flexGrow: 0, backgroundColor: C.card, borderBottomWidth: 1, borderColor: C.line, paddingVertical: 8 },
-  pdfChip: {
-    maxWidth: 200,
+  pdfBar: { flexGrow: 0, backgroundColor: C.card, borderBottomWidth: 1, borderColor: C.line },
+  pdfTab: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    maxWidth: 190,
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: C.bg,
-    borderWidth: 1,
-    borderColor: C.line,
+    paddingVertical: 9,
+    borderBottomWidth: 2,
+    borderColor: "transparent",
   },
-  pdfChipOn: { backgroundColor: C.brand, borderColor: C.brand },
-  pdfChipText: { fontSize: 12, fontWeight: "700", color: C.sub },
+  pdfTabOn: { borderColor: C.brand, backgroundColor: C.brandSoft },
+  pdfTabIcon: { fontSize: 12 },
+  pdfTabText: { fontSize: 12, fontWeight: "700", color: C.sub },
   tabs: { flexDirection: "row", backgroundColor: C.card, borderBottomWidth: 1, borderColor: C.line },
   tab: { flex: 1, paddingVertical: 10, alignItems: "center", borderBottomWidth: 2, borderColor: "transparent" },
   tabOn: { borderColor: C.brand },
@@ -536,7 +585,18 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 8,
   },
-  cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  cardTop: { flexDirection: "row", alignItems: "center", gap: 8 },
+  check: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: C.sub,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkOn: { backgroundColor: C.brand, borderColor: C.brand },
+  checkTxt: { color: "#fff", fontSize: 12, fontWeight: "800" },
   cardPage: { fontWeight: "700", color: C.ink, fontSize: 12 },
   cardAction: { color: C.brand, fontWeight: "700", fontSize: 13 },
   cardInput: {

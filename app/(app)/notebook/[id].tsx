@@ -24,6 +24,7 @@ import { ErrorNote, Loading, Screen } from "@/components/ui";
 import { NotebookPane, type NotebookPaneHandle } from "@/components/NotebookPane";
 import { InkToolbar } from "@/components/InkToolbar";
 import { FloatingTools } from "@/components/FloatingTools";
+import { ZoomWriteBox } from "@/components/ZoomWriteBox";
 import { useDrawTools } from "@/lib/useDrawTools";
 import { C } from "@/lib/theme";
 
@@ -63,6 +64,8 @@ export default function NotebookEditor() {
 
   const [reorderOpen, setReorderOpen] = useState(false);
   const [draft, setDraft] = useState<PageOut[]>([]);
+  const [zoomWrite, setZoomWrite] = useState(false);
+  const boxW = Math.min(width - 24, 820);
 
   const load = useCallback(async () => {
     setErr(null);
@@ -166,6 +169,9 @@ export default function NotebookEditor() {
               <Pressable onPress={() => router.push({ pathname: "/(app)/workspace/[id]", params: { id } })} hitSlop={6}>
                 <Text style={styles.h}>Split</Text>
               </Pressable>
+              <Pressable onPress={() => setZoomWrite((v) => !v)} hitSlop={6}>
+                <Text style={[styles.h, zoomWrite && { color: C.amber }]}>✍️ Zoom</Text>
+              </Pressable>
               <Pressable onPress={openReorder} hitSlop={6}><Text style={styles.h}>⇅</Text></Pressable>
               <Pressable onPress={openPdfDrawer} hitSlop={6}><Text style={styles.h}>PDFs</Text></Pressable>
               <Pressable onPress={addPage} hitSlop={6}><Text style={styles.h}>+ Page</Text></Pressable>
@@ -217,15 +223,28 @@ export default function NotebookEditor() {
         onAccountRedirect={() => router.push("/(app)/account")}
       />
 
-      <FloatingTools
-        tool={tool}
-        color={color}
-        canUndo={!!paneRef.current?.canUndo()}
-        canRedo={!!paneRef.current?.canRedo()}
-        onTool={setTool}
-        onUndo={() => { paneRef.current?.undo(); force((n) => n + 1); }}
-        onRedo={() => { paneRef.current?.redo(); force((n) => n + 1); }}
-      />
+      {zoomWrite ? (
+        <ZoomWriteBox
+          pageW={boxW}
+          tool={tool}
+          color={color}
+          strokeWidth={strokeWidth}
+          pencilOnly={pencilOnly}
+          shapeAssist={shapeAssist}
+          onAdd={(items) => paneRef.current?.appendToActivePage(items)}
+          onClose={() => setZoomWrite(false)}
+        />
+      ) : (
+        <FloatingTools
+          tool={tool}
+          color={color}
+          canUndo={!!paneRef.current?.canUndo()}
+          canRedo={!!paneRef.current?.canRedo()}
+          onTool={setTool}
+          onUndo={() => { paneRef.current?.undo(); force((n) => n + 1); }}
+          onRedo={() => { paneRef.current?.redo(); force((n) => n + 1); }}
+        />
+      )}
 
       {/* PDF drawer */}
       <Modal visible={pdfOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setPdfOpen(false)}>

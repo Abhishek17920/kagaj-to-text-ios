@@ -43,6 +43,8 @@ export interface PdfPaneProps {
   highlight?: { page: number; rx: number; ry: number; rw: number; rh: number } | null;
   /** All link regions to outline faintly on their pages. */
   regions?: NoteLinkOut[];
+  /** Per-link outline colour (from the Connected-regions grouping). */
+  groupColors?: Record<string, string>;
   onAccountRedirect?: () => void;
   /** Region-pick mode: drawing a box reports it instead of inking. */
   linkMode?: boolean;
@@ -68,6 +70,7 @@ export const PdfPane = forwardRef<PaneHandle, PdfPaneProps>(function PdfPane(
     onFocus,
     highlight,
     regions,
+    groupColors,
     onAccountRedirect,
     linkMode,
     onPickRegion,
@@ -212,6 +215,7 @@ export const PdfPane = forwardRef<PaneHandle, PdfPaneProps>(function PdfPane(
                   style={[
                     styles.region,
                     r.id === trackLinkId && styles.regionActive,
+                    groupColors?.[r.id] ? { borderColor: groupColors[r.id], borderWidth: 2.5 } : null,
                     {
                       left: r.rx * pageW,
                       top: r.ry * pageH,

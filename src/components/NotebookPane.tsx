@@ -16,7 +16,7 @@ import {
   type NoteOut,
   type PageOut,
 } from "@/lib/api";
-import { DrawTool, parseAnn, serialiseAnn } from "@/lib/annot";
+import { DrawTool, Item, parseAnn, serialiseAnn } from "@/lib/annot";
 import { usePageInk } from "@/lib/usePageInk";
 import { PageSurface } from "./PageSurface";
 import { NotesLayer } from "./NotesLayer";
@@ -29,6 +29,7 @@ const RATIO = 1.414;
 
 export interface NotebookPaneHandle extends PaneHandle {
   reloadNotes: () => void;
+  appendToActivePage: (items: Item[]) => void;
 }
 
 export interface NotebookPaneProps {
@@ -127,6 +128,11 @@ export const NotebookPane = forwardRef<NotebookPaneHandle, NotebookPaneProps>(
         listRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0 });
       },
       reloadNotes,
+      appendToActivePage: (items: Item[]) => {
+        if (!activeId || !items.length) return;
+        const cur = ink.annOf(activeId);
+        ink.commit(activeId, { items: [...cur.items, ...items] });
+      },
     }));
 
     const onViewable = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {

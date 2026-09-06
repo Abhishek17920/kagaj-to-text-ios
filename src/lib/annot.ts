@@ -149,6 +149,19 @@ export function bboxOfItem(it: Item): Box {
   return { x: it.x, y: it.y, w: it.w, h: it.h };
 }
 
+/** Map an item authored in a 0..1 box into a sub-rectangle of the page. */
+export function mapItemToRegion(it: Item, t: Box): Item {
+  const mx = (x: number) => t.x + x * t.w;
+  const my = (y: number) => t.y + y * t.h;
+  if (it.k === "stroke") {
+    return { ...it, id: uid(), points: it.points.map(([x, y]) => [mx(x), my(y)] as [number, number]) };
+  }
+  if (it.k === "shape") {
+    return { ...it, id: uid(), x0: mx(it.x0), y0: my(it.y0), x1: mx(it.x1), y1: my(it.y1) };
+  }
+  return { ...it, id: uid(), x: mx(it.x), y: my(it.y), w: it.w * t.w, h: it.h * t.h };
+}
+
 /** Move an item by a fraction-space delta; returns a new item. */
 export function translateItem(it: Item, dx: number, dy: number): Item {
   if (it.k === "stroke") {
