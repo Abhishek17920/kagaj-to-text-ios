@@ -22,6 +22,7 @@ export interface PageSurfaceProps {
   color: string;
   strokeWidth: number;
   pencilOnly: boolean;
+  shapeAssist?: boolean;
   rulingType?: string;
   backgroundNode?: React.ReactNode;
 }
@@ -68,6 +69,7 @@ export function PageSurface(p: PageSurfaceProps) {
         color={p.color}
         strokeWidth={p.strokeWidth}
         pencilOnly={p.pencilOnly}
+        shapeAssist={p.shapeAssist}
         rulingType={p.rulingType}
         backgroundNode={p.backgroundNode}
       />

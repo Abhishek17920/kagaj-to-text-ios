@@ -50,6 +50,12 @@ export default function PdfAnnotator() {
     setWidth: setStrokeWidth,
     pencilOnly,
     setPencilOnly,
+    shapeAssist,
+    setShapeAssist,
+    favorites,
+    pinCurrent,
+    applyFavorite,
+    removeFavorite,
   } = useDrawTools();
 
   const paneRef = useRef<PaneHandle>(null);
@@ -152,6 +158,12 @@ export default function PdfAnnotator() {
         pencilOnly={pencilOnly}
         canUndo={!!paneRef.current?.canUndo()}
         canRedo={!!paneRef.current?.canRedo()}
+        shapeAssist={shapeAssist}
+        favorites={favorites}
+        onShapeAssist={setShapeAssist}
+        onPin={pinCurrent}
+        onApplyFavorite={applyFavorite}
+        onRemoveFavorite={removeFavorite}
         onTool={setTool}
         onColor={setColor}
         onWidth={setStrokeWidth}
@@ -171,6 +183,7 @@ export default function PdfAnnotator() {
         color={color}
         strokeWidth={strokeWidth}
         pencilOnly={pencilOnly}
+        shapeAssist={shapeAssist}
         onActivePageChange={setActivePage}
         onSavingChange={setSaving}
         onAccountRedirect={() => router.push("/(app)/account")}

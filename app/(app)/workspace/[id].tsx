@@ -56,6 +56,12 @@ export default function Workspace() {
     setWidth: setStrokeWidth,
     pencilOnly,
     setPencilOnly,
+    shapeAssist,
+    setShapeAssist,
+    favorites,
+    pinCurrent,
+    applyFavorite,
+    removeFavorite,
   } = useDrawTools();
   const [, force] = useState(0);
 
@@ -226,6 +232,7 @@ export default function Workspace() {
       color={color}
       strokeWidth={strokeWidth}
       pencilOnly={pencilOnly}
+      shapeAssist={shapeAssist}
       onFocus={() => setFocused("notebook")}
       onActiveIndexChange={setNbPageIdx}
       onNotesChange={setNotes}
@@ -248,6 +255,7 @@ export default function Workspace() {
       color={color}
       strokeWidth={strokeWidth}
       pencilOnly={pencilOnly}
+      shapeAssist={shapeAssist}
       onFocus={() => setFocused("pdf")}
       regions={regions}
       highlight={flash}
@@ -339,6 +347,12 @@ export default function Workspace() {
         pencilOnly={pencilOnly}
         canUndo={!!paneRef()?.canUndo()}
         canRedo={!!paneRef()?.canRedo()}
+        shapeAssist={shapeAssist}
+        favorites={favorites}
+        onShapeAssist={setShapeAssist}
+        onPin={pinCurrent}
+        onApplyFavorite={applyFavorite}
+        onRemoveFavorite={removeFavorite}
         onTool={setTool}
         onColor={setColor}
         onWidth={setStrokeWidth}

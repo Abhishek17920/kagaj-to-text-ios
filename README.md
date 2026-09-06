@@ -15,6 +15,11 @@ as the web version. Same backend (`kagaj-to-text-back`), same login, same files.
 | **Pressure-sensitive pen** — Apple Pencil force (W3C pointer events) drives a variable-width ink ribbon; finger = constant width | `DrawCanvas.tsx` `ribbonPath`, `Stroke.pressures` |
 | **Adjustable eraser size** (12–60) with a live circular cursor; pen & eraser keep separate widths | `useDrawTools.ts`, `InkToolbar.tsx` |
 | Compact top toolbar — tools row + animated style row (colours / widths) that slides in for drawing tools | `src/components/InkToolbar.tsx` |
+| **Select tool** — tap a stroke/shape, drag to move, Duplicate / Delete | `DrawCanvas.tsx` |
+| **Shape assist** — rough pen strokes snap to line / rectangle / ellipse (toggle) | `annot.ts` `recogniseShape`, `DrawCanvas.tsx` |
+| **Laser pointer** — temporary red trail that fades, never saved | `DrawCanvas.tsx` |
+| **Custom colour** — full hue + shade picker behind the toolbar "＋" | `src/components/ColorPicker.tsx` |
+| **Pinned pen presets** — 📌 Pin the current pen+colour+width, tap to re-apply, long-press to remove (persisted) | `useDrawTools.ts`, `InkToolbar.tsx` |
 | New-notebook picker shows a live **ruling preview** thumbnail per style | `src/components/Ruling.tsx` `RulingThumb`, `app/(app)/new.tsx` |
 | **Palm rejection** — "Pencil only" toggle: ignores finger input (`pointerType !== STYLUS`) | `DrawCanvas.tsx` (`pan.onBegin`) |
 | Per‑page undo / redo / clear | shared via `src/lib/usePageInk.ts` |

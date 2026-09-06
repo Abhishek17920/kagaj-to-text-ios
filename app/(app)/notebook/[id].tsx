@@ -46,6 +46,12 @@ export default function NotebookEditor() {
     setWidth: setStrokeWidth,
     pencilOnly,
     setPencilOnly,
+    shapeAssist,
+    setShapeAssist,
+    favorites,
+    pinCurrent,
+    applyFavorite,
+    removeFavorite,
   } = useDrawTools();
   const [, force] = useState(0);
 
@@ -175,6 +181,12 @@ export default function NotebookEditor() {
         pencilOnly={pencilOnly}
         canUndo={!!paneRef.current?.canUndo()}
         canRedo={!!paneRef.current?.canRedo()}
+        shapeAssist={shapeAssist}
+        favorites={favorites}
+        onShapeAssist={setShapeAssist}
+        onPin={pinCurrent}
+        onApplyFavorite={applyFavorite}
+        onRemoveFavorite={removeFavorite}
         onTool={setTool}
         onColor={setColor}
         onWidth={setStrokeWidth}
@@ -200,6 +212,7 @@ export default function NotebookEditor() {
         color={color}
         strokeWidth={strokeWidth}
         pencilOnly={pencilOnly}
+        shapeAssist={shapeAssist}
         onSavingChange={setSaving}
         onAccountRedirect={() => router.push("/(app)/account")}
       />

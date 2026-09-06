@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInUp, FadeOutUp } from "react-native-reanimated";
 import { DrawTool } from "@/lib/annot";
+import type { Preset } from "@/lib/useDrawTools";
+import { ColorPicker } from "./ColorPicker";
 import { C, ERASER_WIDTHS, HL_COLORS, HL_WIDTHS, INK_COLORS, PEN_WIDTHS } from "@/lib/theme";
 
 export interface InkToolbarProps {
@@ -9,12 +11,18 @@ export interface InkToolbarProps {
   color: string;
   strokeWidth: number;
   pencilOnly: boolean;
+  shapeAssist: boolean;
+  favorites: Preset[];
   canUndo: boolean;
   canRedo: boolean;
   onTool: (t: DrawTool) => void;
   onColor: (c: string) => void;
   onWidth: (w: number) => void;
   onPencilOnly: (v: boolean) => void;
+  onShapeAssist: (v: boolean) => void;
+  onPin: () => void;
+  onApplyFavorite: (p: Preset) => void;
+  onRemoveFavorite: (i: number) => void;
   onUndo: () => void;
   onRedo: () => void;
   onClear: () => void;
@@ -30,7 +38,8 @@ const TOOLS: { id: DrawTool; label: string; glyph: string }[] = [
   { id: "ellipse", label: "Oval", glyph: "◯" },
   { id: "text", label: "Text", glyph: "T" },
   { id: "sticky", label: "Note", glyph: "✦" },
-  { id: "select", label: "Move", glyph: "✥" },
+  { id: "select", label: "Select", glyph: "✥" },
+  { id: "laser", label: "Laser", glyph: "◉" },
 ];
 
 const STYLE_TOOLS: DrawTool[] = ["pen", "highlighter", "eraser", "line", "arrow", "rect", "ellipse"];
@@ -40,20 +49,24 @@ function IconBtn({
   onPress,
   disabled,
   danger,
+  active,
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
   danger?: boolean;
+  active?: boolean;
 }) {
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       hitSlop={6}
-      style={[styles.iconBtn, disabled && { opacity: 0.35 }]}
+      style={[styles.iconBtn, active && styles.iconBtnOn, disabled && { opacity: 0.35 }]}
     >
-      <Text style={[styles.iconTxt, danger && { color: C.danger }]}>{label}</Text>
+      <Text style={[styles.iconTxt, danger && { color: C.danger }, active && { color: "#fff" }]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -61,9 +74,11 @@ function IconBtn({
 export function InkToolbar(p: InkToolbarProps) {
   const isHl = p.tool === "highlighter";
   const isEraser = p.tool === "eraser";
+  const [pickerOpen, setPickerOpen] = useState(false);
   const swatches = isEraser ? [] : isHl ? HL_COLORS : INK_COLORS;
   const widths = isEraser ? ERASER_WIDTHS : isHl ? HL_WIDTHS : PEN_WIDTHS;
   const showStyle = STYLE_TOOLS.includes(p.tool);
+  const canShapeAssist = p.tool === "pen";
 
   return (
     <View style={styles.bar}>
@@ -76,11 +91,7 @@ export function InkToolbar(p: InkToolbarProps) {
           <Text style={[styles.pencilTxt, p.pencilOnly && { color: "#fff" }]}>✎</Text>
         </Pressable>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tools}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tools}>
           {TOOLS.map((t) => {
             const active = p.tool === t.id;
             return (
@@ -97,6 +108,9 @@ export function InkToolbar(p: InkToolbarProps) {
         </ScrollView>
 
         <View style={styles.actions}>
+          {canShapeAssist ? (
+            <IconBtn label="⬛" active={p.shapeAssist} onPress={() => p.onShapeAssist(!p.shapeAssist)} />
+          ) : null}
           <IconBtn label="↶" onPress={p.onUndo} disabled={!p.canUndo} />
           <IconBtn label="↷" onPress={p.onRedo} disabled={!p.canRedo} />
           <IconBtn label="✕" onPress={p.onClear} danger />
@@ -104,16 +118,8 @@ export function InkToolbar(p: InkToolbarProps) {
       </View>
 
       {showStyle ? (
-        <Animated.View
-          entering={FadeInUp.duration(150)}
-          exiting={FadeOutUp.duration(110)}
-          style={styles.styleRow}
-        >
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.tools}
-          >
+        <Animated.View entering={FadeInUp.duration(150)} exiting={FadeOutUp.duration(110)} style={styles.styleRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tools}>
             {swatches.map((c) => (
               <Pressable
                 key={c}
@@ -121,6 +127,11 @@ export function InkToolbar(p: InkToolbarProps) {
                 style={[styles.swatch, { backgroundColor: c }, p.color === c && styles.swatchOn]}
               />
             ))}
+            {!isEraser ? (
+              <Pressable onPress={() => setPickerOpen(true)} style={[styles.swatch, styles.swatchCustom]}>
+                <Text style={styles.plus}>＋</Text>
+              </Pressable>
+            ) : null}
             {swatches.length ? <View style={styles.sep} /> : null}
             {widths.map((w) => {
               const dot = Math.max(6, Math.min(20, isEraser ? w / 3 : w + 3));
@@ -143,10 +154,44 @@ export function InkToolbar(p: InkToolbarProps) {
                 </Pressable>
               );
             })}
-            {isEraser ? <Text style={styles.hintTxt}>eraser size</Text> : null}
+            {!isEraser ? (
+              <>
+                <View style={styles.sep} />
+                <Pressable onPress={p.onPin} style={styles.pinBtn}>
+                  <Text style={styles.pinTxt}>📌 Pin</Text>
+                </Pressable>
+              </>
+            ) : null}
           </ScrollView>
         </Animated.View>
       ) : null}
+
+      {p.favorites.length ? (
+        <View style={styles.styleRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tools}>
+            {p.favorites.map((f, i) => (
+              <Pressable
+                key={`${f.tool}-${f.color}-${f.width}-${i}`}
+                onPress={() => p.onApplyFavorite(f)}
+                onLongPress={() => p.onRemoveFavorite(i)}
+                style={styles.fav}
+              >
+                <View style={[styles.favDot, { backgroundColor: f.color }]} />
+                <Text style={styles.favTxt}>
+                  {f.tool === "highlighter" ? "MK" : "PN"} {f.width}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+
+      <ColorPicker
+        visible={pickerOpen}
+        initial={p.color}
+        onClose={() => setPickerOpen(false)}
+        onPick={p.onColor}
+      />
     </View>
   );
 }
@@ -192,23 +237,19 @@ const styles = StyleSheet.create({
   pencilOn: { backgroundColor: C.brand, borderColor: C.brand },
   pencilTxt: { fontSize: 15, color: C.sub },
   actions: { flexDirection: "row", alignItems: "center", gap: 2, paddingLeft: 4 },
-  iconBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
+  iconBtn: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  iconBtnOn: { backgroundColor: C.brand },
+  iconTxt: { fontSize: 15, color: C.ink, fontWeight: "700" },
+  styleRow: { paddingHorizontal: 8 },
+  swatch: { width: 24, height: 24, borderRadius: 999, borderWidth: 2, borderColor: "transparent" },
+  swatchOn: { borderColor: C.ink },
+  swatchCustom: {
+    backgroundColor: C.bg,
+    borderColor: C.line,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconTxt: { fontSize: 16, color: C.ink, fontWeight: "700" },
-  styleRow: { paddingHorizontal: 8 },
-  swatch: {
-    width: 24,
-    height: 24,
-    borderRadius: 999,
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  swatchOn: { borderColor: C.ink },
+  plus: { fontSize: 13, fontWeight: "800", color: C.brand },
   sep: { width: 1, height: 22, backgroundColor: C.line, marginHorizontal: 4 },
   hintTxt: { fontSize: 11, color: C.sub, fontWeight: "600", marginLeft: 4 },
   widthBtn: {
@@ -222,4 +263,28 @@ const styles = StyleSheet.create({
     borderColor: C.line,
   },
   widthOn: { borderColor: C.brand, backgroundColor: C.brandSoft },
+  pinBtn: {
+    paddingHorizontal: 10,
+    height: 28,
+    borderRadius: 999,
+    backgroundColor: C.bg,
+    borderWidth: 1,
+    borderColor: C.line,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pinTxt: { fontSize: 11, fontWeight: "700", color: C.sub },
+  fav: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    height: 28,
+    borderRadius: 999,
+    backgroundColor: C.bg,
+    borderWidth: 1,
+    borderColor: C.line,
+  },
+  favDot: { width: 12, height: 12, borderRadius: 999 },
+  favTxt: { fontSize: 11, fontWeight: "700", color: C.sub },
 });

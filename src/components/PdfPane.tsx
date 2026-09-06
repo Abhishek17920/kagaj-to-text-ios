@@ -35,6 +35,7 @@ export interface PdfPaneProps {
   color: string;
   strokeWidth: number;
   pencilOnly: boolean;
+  shapeAssist?: boolean;
   onActivePageChange?: (page: number) => void;
   onSavingChange?: (busy: boolean) => void;
   onFocus?: () => void;
@@ -61,6 +62,7 @@ export const PdfPane = forwardRef<PaneHandle, PdfPaneProps>(function PdfPane(
     color,
     strokeWidth,
     pencilOnly,
+    shapeAssist,
     onActivePageChange,
     onSavingChange,
     onFocus,
@@ -244,6 +246,8 @@ export const PdfPane = forwardRef<PaneHandle, PdfPaneProps>(function PdfPane(
                   color={color}
                   strokeWidth={strokeWidth}
                   pencilOnly={pencilOnly}
+
+                  shapeAssist={shapeAssist}
                 />
               </View>
 

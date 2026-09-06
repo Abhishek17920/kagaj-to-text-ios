@@ -40,6 +40,7 @@ export interface NotebookPaneProps {
   color: string;
   strokeWidth: number;
   pencilOnly: boolean;
+  shapeAssist?: boolean;
   onSavingChange?: (busy: boolean) => void;
   onActiveIndexChange?: (index: number) => void;
   onFocus?: () => void;
@@ -63,6 +64,7 @@ export const NotebookPane = forwardRef<NotebookPaneHandle, NotebookPaneProps>(
       color,
       strokeWidth,
       pencilOnly,
+      shapeAssist,
       onSavingChange,
       onActiveIndexChange,
       onFocus,
@@ -254,6 +256,8 @@ export const NotebookPane = forwardRef<NotebookPaneHandle, NotebookPaneProps>(
                     color={color}
                     strokeWidth={strokeWidth}
                     pencilOnly={pencilOnly}
+
+                    shapeAssist={shapeAssist}
                     rulingType={item.page_type || defaultRuling}
                   />
                 </View>
