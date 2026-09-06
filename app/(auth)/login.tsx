@@ -1,9 +1,18 @@
 import React, { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Link, useRouter } from "expo-router";
 import { useAuth } from "@/lib/auth";
 import { Button, Field, Screen } from "@/components/ui";
 import { ApiError } from "@/lib/api";
+import { ServerSettings } from "@/components/ServerSettings";
 import { C } from "@/lib/theme";
 
 export default function Login() {
@@ -13,6 +22,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [serverOpen, setServerOpen] = useState(false);
 
   const submit = async () => {
     setErr(null);
@@ -68,8 +78,14 @@ export default function Login() {
               Create an account
             </Link>
           </View>
+
+          <Pressable onPress={() => setServerOpen(true)} style={styles.serverLink} hitSlop={8}>
+            <Text style={styles.muted}>⚙︎ Server settings</Text>
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ServerSettings visible={serverOpen} onClose={() => setServerOpen(false)} />
     </Screen>
   );
 }
@@ -92,4 +108,5 @@ const styles = StyleSheet.create({
   footer: { flexDirection: "row", justifyContent: "center", marginTop: 22 },
   muted: { color: C.sub },
   link: { color: C.brand, fontWeight: "700" },
+  serverLink: { alignItems: "center", marginTop: 28 },
 });

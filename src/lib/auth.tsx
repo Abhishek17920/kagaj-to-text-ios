@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Auth, setToken, loadToken, type SubscriptionOut, type UserOut } from "./api";
+import { loadApiBase } from "./config";
 
 interface AuthState {
   ready: boolean; // finished the initial token check
@@ -38,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
+      await loadApiBase(); // must run before any request
       await hydrate();
       setReady(true);
     })();

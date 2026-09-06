@@ -1,17 +1,19 @@
 import React, { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Billing } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button, Screen } from "@/components/ui";
+import { ServerSettings } from "@/components/ServerSettings";
 import { C } from "@/lib/theme";
-import { API_BASE } from "@/lib/config";
+import { resolveApiBase } from "@/lib/config";
 
 export default function Account() {
   const { user, subscription, refresh, signOut } = useAuth();
   const router = useRouter();
   const [busy, setBusy] = useState<"monthly" | "yearly" | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [serverOpen, setServerOpen] = useState(false);
 
   const subscribe = async (plan: "monthly" | "yearly") => {
     setBusy(plan);
@@ -63,9 +65,11 @@ export default function Account() {
           {msg ? <Text style={[styles.muted, { color: C.ok, marginTop: 8 }]}>{msg}</Text> : null}
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.muted}>API: {API_BASE}</Text>
-        </View>
+        <Pressable style={styles.card} onPress={() => setServerOpen(true)}>
+          <Text style={styles.title}>Server</Text>
+          <Text style={styles.muted}>{resolveApiBase()}</Text>
+          <Text style={[styles.muted, { color: C.brand, marginTop: 4 }]}>Tap to change</Text>
+        </Pressable>
 
         <Button
           title="Sign out"
@@ -76,6 +80,8 @@ export default function Account() {
           }}
         />
       </ScrollView>
+
+      <ServerSettings visible={serverOpen} onClose={() => setServerOpen(false)} />
     </Screen>
   );
 }

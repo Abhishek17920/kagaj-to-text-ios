@@ -15,7 +15,11 @@
       "requireFullScreen": false,
       "infoPlist": {
         "UISupportsDocumentBrowser": true,
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocalNetworkUsageDescription": "Connect to the Kagaj to Text server running on your computer over Wi-Fi.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
       }
     },
     "plugins": [

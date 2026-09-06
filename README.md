@@ -32,22 +32,24 @@ identically on the web and vice‑versa (`strokes_json`).
 
 ## 1. Point it at your backend
 
-The app talks straight to FastAPI (no Next.js proxy on device). Set the address:
+The app talks straight to FastAPI (no Next.js proxy on device). Set the address,
+highest priority first:
 
-```bash
-# same Wi‑Fi as the laptop running ./run.sh  (note: no /api suffix)
-export EXPO_PUBLIC_API_BASE=http://192.168.1.8:8010
+1. **In-app** — login screen → **⚙︎ Server settings** → enter URL → **Test
+   connection** → **Save**. Stored on device (AsyncStorage), survives restarts,
+   no rebuild. Best for Cloudflare "quick" tunnels (URL changes each restart).
+   Also editable from the Account screen.
+2. **Build-time env** — `EXPO_PUBLIC_API_BASE=… npx expo start`.
+3. **Fallback** — the constant in `src/lib/config.ts` (`http://192.168.1.8:8010`).
 
-# …or the public Cloudflare tunnel  (WITH /api, the web proxy path)
-export EXPO_PUBLIC_API_BASE=https://YOURNAME.trycloudflare.com/api
-```
+Address forms: `http://192.168.1.8:8010` (same Wi-Fi, **no** `/api`) or
+`https://YOURNAME.trycloudflare.com/api` (tunnel, **with** `/api`).
 
-Fallback if unset: the tunnel URL baked into `src/lib/config.ts` — change it there
-or always export the variable.
-
-If you use a plain `http://` LAN address, iOS ATS needs an exception. This repo
-does not add one; use the `https://` tunnel for device builds, or add
-`NSAppTransportSecurity` in `app.json` → `ios.infoPlist` for local testing.
+- Backend must bind all interfaces for LAN: `kagaj-to-text-back/run.sh` passes
+  `--host 0.0.0.0`. Find the laptop IP with `ip a` / `ifconfig`.
+- Plain `http://` to a private IP is allowed by `NSAllowsLocalNetworking`
+  (in `app.json`). iOS shows a "find devices on local network" prompt on first
+  connect — tap Allow. An `https://` tunnel avoids that.
 
 ## 2. Install
 

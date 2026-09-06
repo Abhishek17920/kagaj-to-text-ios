@@ -1,5 +1,5 @@
 import * as SecureStore from "expo-secure-store";
-import { API_BASE } from "./config";
+import { resolveApiBase } from "./config";
 
 /* ------------------------------------------------------------------ *
  * Token storage
@@ -68,7 +68,7 @@ export async function api<T = unknown>(path: string, opts: Opts = {}): Promise<T
 
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}${path}`, { ...opts, headers, body });
+    res = await fetch(`${resolveApiBase()}${path}`, { ...opts, headers, body });
   } catch (e) {
     throw new ApiError(0, "Network error — check the API address / Wi-Fi.");
   }
@@ -105,6 +105,18 @@ export async function api<T = unknown>(path: string, opts: Opts = {}): Promise<T
   }
 
   return data as T;
+}
+
+/** Quick reachability probe for a candidate base URL (Server settings). */
+export async function pingHealth(base: string): Promise<{ ok: boolean; detail: string }> {
+  const url = `${base.trim().replace(/\/+$/, "")}/health`;
+  try {
+    const res = await fetch(url, { method: "GET" });
+    const text = await res.text();
+    return { ok: res.ok, detail: res.ok ? text || `${res.status}` : `HTTP ${res.status}` };
+  } catch (e) {
+    return { ok: false, detail: e instanceof Error ? e.message : "unreachable" };
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -291,7 +303,8 @@ export const Pdfs = {
     form.append("file", file as unknown as Blob);
     return api<PdfOut>(`/notebooks/${notebookId}/pdfs`, { method: "POST", form });
   },
-  pageImageUrl: (pdfId: string, page: number) => `${API_BASE}/pdfs/${pdfId}/pages/${page}/render`,
+  pageImageUrl: (pdfId: string, page: number) =>
+    `${resolveApiBase()}/pdfs/${pdfId}/pages/${page}/render`,
   getAnnotations: (pdfId: string, page: number) =>
     api<PdfAnnOut>(`/pdfs/${pdfId}/annotations/${page}`),
   saveAnnotations: (pdfId: string, page: number, strokes_json: string) =>
