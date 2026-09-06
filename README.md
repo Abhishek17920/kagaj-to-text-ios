@@ -12,6 +12,8 @@ as the web version. Same backend (`kagaj-to-text-back`), same login, same files.
 | Dashboard: notebook grid, covers, page rulings on create | `app/(app)/dashboard.tsx`, `app/(app)/new.tsx` |
 | Notebook editor: infinite vertical page scroll, page‑number badge, add page | `app/(app)/notebook/[id].tsx` |
 | **Apple Pencil** drawing (Skia), pen / highlighter / eraser / line / arrow / box / oval / text / note / move | `src/components/DrawCanvas.tsx`, `PageSurface.tsx` |
+| **Pressure-sensitive pen** — Apple Pencil force (W3C pointer events) drives a variable-width ink ribbon; finger = constant width | `DrawCanvas.tsx` `ribbonPath`, `Stroke.pressures` |
+| **Adjustable eraser size** (12–60) with a live circular cursor; pen & eraser keep separate widths | `useDrawTools.ts`, `InkToolbar.tsx` |
 | Compact top toolbar — tools row + animated style row (colours / widths) that slides in for drawing tools | `src/components/InkToolbar.tsx` |
 | New-notebook picker shows a live **ruling preview** thumbnail per style | `src/components/Ruling.tsx` `RulingThumb`, `app/(app)/new.tsx` |
 | **Palm rejection** — "Pencil only" toggle: ignores finger input (`pointerType !== STYLUS`) | `DrawCanvas.tsx` (`pan.onBegin`) |

@@ -29,3 +29,4 @@ export const HL_COLORS = ["#fde047", "#86efac", "#93c5fd", "#fca5a5", "#f9a8d4"]
 
 export const PEN_WIDTHS = [2, 3, 5, 8] as const;
 export const HL_WIDTHS = [14, 20, 28] as const;
+export const ERASER_WIDTHS = [12, 24, 40, 60] as const;

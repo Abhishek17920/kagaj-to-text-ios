@@ -20,11 +20,11 @@ import {
   type PageOut,
   type PdfOut,
 } from "@/lib/api";
-import { DrawTool } from "@/lib/annot";
 import { ErrorNote, Loading, Screen } from "@/components/ui";
 import { NotebookPane, type NotebookPaneHandle } from "@/components/NotebookPane";
 import { InkToolbar } from "@/components/InkToolbar";
-import { C, INK_COLORS, PEN_WIDTHS } from "@/lib/theme";
+import { useDrawTools } from "@/lib/useDrawTools";
+import { C } from "@/lib/theme";
 
 export default function NotebookEditor() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -36,10 +36,16 @@ export default function NotebookEditor() {
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const [tool, setTool] = useState<DrawTool>("pen");
-  const [color, setColor] = useState<string>(INK_COLORS[0]);
-  const [strokeWidth, setStrokeWidth] = useState<number>(PEN_WIDTHS[1]);
-  const [pencilOnly, setPencilOnly] = useState(false);
+  const {
+    tool,
+    setTool,
+    color,
+    setColor,
+    strokeWidth,
+    setWidth: setStrokeWidth,
+    pencilOnly,
+    setPencilOnly,
+  } = useDrawTools();
   const [, force] = useState(0);
 
   const paneRef = useRef<NotebookPaneHandle>(null);

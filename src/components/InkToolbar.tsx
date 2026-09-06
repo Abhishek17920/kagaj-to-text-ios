@@ -2,7 +2,7 @@ import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInUp, FadeOutUp } from "react-native-reanimated";
 import { DrawTool } from "@/lib/annot";
-import { C, HL_COLORS, HL_WIDTHS, INK_COLORS, PEN_WIDTHS } from "@/lib/theme";
+import { C, ERASER_WIDTHS, HL_COLORS, HL_WIDTHS, INK_COLORS, PEN_WIDTHS } from "@/lib/theme";
 
 export interface InkToolbarProps {
   tool: DrawTool;
@@ -33,7 +33,7 @@ const TOOLS: { id: DrawTool; label: string; glyph: string }[] = [
   { id: "select", label: "Move", glyph: "✥" },
 ];
 
-const STYLE_TOOLS: DrawTool[] = ["pen", "highlighter", "line", "arrow", "rect", "ellipse"];
+const STYLE_TOOLS: DrawTool[] = ["pen", "highlighter", "eraser", "line", "arrow", "rect", "ellipse"];
 
 function IconBtn({
   label,
@@ -60,8 +60,9 @@ function IconBtn({
 
 export function InkToolbar(p: InkToolbarProps) {
   const isHl = p.tool === "highlighter";
-  const swatches = isHl ? HL_COLORS : INK_COLORS;
-  const widths = isHl ? HL_WIDTHS : PEN_WIDTHS;
+  const isEraser = p.tool === "eraser";
+  const swatches = isEraser ? [] : isHl ? HL_COLORS : INK_COLORS;
+  const widths = isEraser ? ERASER_WIDTHS : isHl ? HL_WIDTHS : PEN_WIDTHS;
   const showStyle = STYLE_TOOLS.includes(p.tool);
 
   return (
@@ -120,23 +121,29 @@ export function InkToolbar(p: InkToolbarProps) {
                 style={[styles.swatch, { backgroundColor: c }, p.color === c && styles.swatchOn]}
               />
             ))}
-            <View style={styles.sep} />
-            {widths.map((w) => (
-              <Pressable
-                key={w}
-                onPress={() => p.onWidth(w)}
-                style={[styles.widthBtn, p.strokeWidth === w && styles.widthOn]}
-              >
-                <View
-                  style={{
-                    width: Math.min(18, w + 3),
-                    height: Math.min(18, w + 3),
-                    borderRadius: 999,
-                    backgroundColor: isHl ? p.color : C.ink,
-                  }}
-                />
-              </Pressable>
-            ))}
+            {swatches.length ? <View style={styles.sep} /> : null}
+            {widths.map((w) => {
+              const dot = Math.max(6, Math.min(20, isEraser ? w / 3 : w + 3));
+              return (
+                <Pressable
+                  key={w}
+                  onPress={() => p.onWidth(w)}
+                  style={[styles.widthBtn, p.strokeWidth === w && styles.widthOn]}
+                >
+                  <View
+                    style={{
+                      width: dot,
+                      height: dot,
+                      borderRadius: 999,
+                      borderWidth: isEraser ? 1.5 : 0,
+                      borderColor: C.sub,
+                      backgroundColor: isEraser ? "transparent" : isHl ? p.color : C.ink,
+                    }}
+                  />
+                </Pressable>
+              );
+            })}
+            {isEraser ? <Text style={styles.hintTxt}>eraser size</Text> : null}
           </ScrollView>
         </Animated.View>
       ) : null}
@@ -203,6 +210,7 @@ const styles = StyleSheet.create({
   },
   swatchOn: { borderColor: C.ink },
   sep: { width: 1, height: 22, backgroundColor: C.line, marginHorizontal: 4 },
+  hintTxt: { fontSize: 11, color: C.sub, fontWeight: "600", marginLeft: 4 },
   widthBtn: {
     width: 30,
     height: 30,

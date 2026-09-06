@@ -11,13 +11,13 @@ import {
   type NotebookDetail,
   type PdfOut,
 } from "@/lib/api";
-import { DrawTool } from "@/lib/annot";
 import { ErrorNote, Loading, Screen } from "@/components/ui";
 import { NotebookPane, type NotebookPaneHandle } from "@/components/NotebookPane";
 import { PdfPane, type PaneHandle } from "@/components/PdfPane";
 import { InkToolbar } from "@/components/InkToolbar";
 import { ConnectorLine, type XY } from "@/components/ConnectorLine";
-import { C, INK_COLORS, PEN_WIDTHS } from "@/lib/theme";
+import { useDrawTools } from "@/lib/useDrawTools";
+import { C } from "@/lib/theme";
 
 type Flash = { page: number; rx: number; ry: number; rw: number; rh: number };
 
@@ -36,10 +36,16 @@ export default function Workspace() {
   const [tab, setTab] = useState<"notebook" | "pdf">("notebook");
   const [focused, setFocused] = useState<"notebook" | "pdf">("notebook");
 
-  const [tool, setTool] = useState<DrawTool>("pen");
-  const [color, setColor] = useState<string>(INK_COLORS[0]);
-  const [strokeWidth, setStrokeWidth] = useState<number>(PEN_WIDTHS[1]);
-  const [pencilOnly, setPencilOnly] = useState(false);
+  const {
+    tool,
+    setTool,
+    color,
+    setColor,
+    strokeWidth,
+    setWidth: setStrokeWidth,
+    pencilOnly,
+    setPencilOnly,
+  } = useDrawTools();
   const [, force] = useState(0);
 
   const [notes, setNotes] = useState<NoteOut[]>([]);

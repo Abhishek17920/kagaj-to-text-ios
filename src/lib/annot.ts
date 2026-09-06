@@ -26,6 +26,8 @@ export interface Stroke {
   color: string;
   width: number;
   points: [number, number][];
+  /** Per-point Apple Pencil pressure (0..1). Absent = constant width. */
+  pressures?: number[];
 }
 
 export interface Shape {

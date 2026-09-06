@@ -12,11 +12,11 @@ import {
 } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Pdfs, loadToken, type PdfOut } from "@/lib/api";
-import { DrawTool } from "@/lib/annot";
 import { ErrorNote, Loading, Screen } from "@/components/ui";
 import { PdfPane, type PaneHandle } from "@/components/PdfPane";
 import { InkToolbar } from "@/components/InkToolbar";
-import { C, INK_COLORS, PEN_WIDTHS } from "@/lib/theme";
+import { useDrawTools } from "@/lib/useDrawTools";
+import { C } from "@/lib/theme";
 
 function parseBookmarks(meta: string): number[] {
   try {
@@ -39,10 +39,16 @@ export default function PdfAnnotator() {
   const [saving, setSaving] = useState(false);
   const [, force] = useState(0);
 
-  const [tool, setTool] = useState<DrawTool>("pen");
-  const [color, setColor] = useState<string>(INK_COLORS[0]);
-  const [strokeWidth, setStrokeWidth] = useState<number>(PEN_WIDTHS[1]);
-  const [pencilOnly, setPencilOnly] = useState(false);
+  const {
+    tool,
+    setTool,
+    color,
+    setColor,
+    strokeWidth,
+    setWidth: setStrokeWidth,
+    pencilOnly,
+    setPencilOnly,
+  } = useDrawTools();
 
   const paneRef = useRef<PaneHandle>(null);
 

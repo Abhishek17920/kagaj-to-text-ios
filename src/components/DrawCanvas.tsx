@@ -1,7 +1,8 @@
 import React, { useMemo, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, type PointerEvent as RNPointerEvent } from "react-native";
 import {
   Canvas,
+  Circle,
   Group,
   Path,
   Skia,
@@ -65,6 +66,34 @@ function smoothPath(pts: Pt[]): SkPath {
   return p;
 }
 
+/** Pressure (0..1) → half-width multiplier of the base stroke width. */
+const halfWidth = (base: number, pr: number) => (base * (0.32 + 1.05 * pr)) / 2;
+
+/** A filled ribbon whose thickness follows per-point pressure. */
+function ribbonPath(pts: Pt[], base: number, pressures: number[]): SkPath {
+  const p = Skia.Path.Make();
+  if (pts.length < 2) return p;
+  const left: Pt[] = [];
+  const right: Pt[] = [];
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[Math.max(0, i - 1)];
+    const b = pts[Math.min(pts.length - 1, i + 1)];
+    let nx = -(b.y - a.y);
+    let ny = b.x - a.x;
+    const len = Math.hypot(nx, ny) || 1;
+    nx /= len;
+    ny /= len;
+    const hw = halfWidth(base, pressures[i] ?? 0.5);
+    left.push({ x: pts[i].x + nx * hw, y: pts[i].y + ny * hw });
+    right.push({ x: pts[i].x - nx * hw, y: pts[i].y - ny * hw });
+  }
+  p.moveTo(left[0].x, left[0].y);
+  for (let i = 1; i < left.length; i++) p.lineTo(left[i].x, left[i].y);
+  for (let i = right.length - 1; i >= 0; i--) p.lineTo(right[i].x, right[i].y);
+  p.close();
+  return p;
+}
+
 function shapePath(s: Shape, w: number, h: number): SkPath {
   const p = Skia.Path.Make();
   const x0 = s.x0 * w;
@@ -90,6 +119,17 @@ function shapePath(s: Shape, w: number, h: number): SkPath {
   return p;
 }
 
+const hasVariation = (pr: number[]) => {
+  if (pr.length < 2) return false;
+  let lo = 1;
+  let hi = 0;
+  for (const v of pr) {
+    if (v < lo) lo = v;
+    if (v > hi) hi = v;
+  }
+  return hi - lo > 0.08;
+};
+
 export function DrawCanvas({
   width,
   height,
@@ -103,10 +143,22 @@ export function DrawCanvas({
   backgroundNode,
 }: DrawCanvasProps) {
   const [live, setLive] = useState<Pt[] | null>(null);
+  const [livePr, setLivePr] = useState<number[]>([]);
   const liveRef = useRef<Pt[] | null>(null);
+  const livePrRef = useRef<number[]>([]);
   const rejected = useRef(false);
   const annRef = useRef(ann);
   annRef.current = ann;
+
+  // Apple Pencil pressure — captured from W3C pointer events on the wrapper and
+  // sampled by the gesture handler as it adds points. Falls back to 0.5.
+  const pressureRef = useRef(0.5);
+  const onPointer = (e: RNPointerEvent) => {
+    const n = e.nativeEvent as unknown as { pressure?: number };
+    if (typeof n.pressure === "number" && n.pressure > 0) {
+      pressureRef.current = Math.max(0.05, Math.min(1, n.pressure));
+    }
+  };
 
   const strokeItems = useMemo(
     () => (ann.items.filter((i) => i.k === "stroke") as Stroke[]),
@@ -119,10 +171,17 @@ export function DrawCanvas({
 
   const strokePaths = useMemo(
     () =>
-      strokeItems.map((s) => ({
-        s,
-        path: smoothPath(toPixels(s.points, width, height)),
-      })),
+      strokeItems.map((s) => {
+        const pix = toPixels(s.points, width, height);
+        const variable = s.pressures && s.pressures.length === s.points.length;
+        return {
+          s,
+          variable,
+          path: variable
+            ? ribbonPath(pix, s.width, s.pressures as number[])
+            : smoothPath(pix),
+        };
+      }),
     [strokeItems, width, height],
   );
   const shapePaths = useMemo(
@@ -132,9 +191,10 @@ export function DrawCanvas({
 
   const isShapeTool = tool === "line" || tool === "arrow" || tool === "rect" || tool === "ellipse";
   const isPassiveTool = tool === "sticky" || tool === "select" || tool === "text";
+  const eraseRadius = tool === "eraser" ? Math.max(10, strokeWidth) : 0;
 
   const eraseAt = (px: number, py: number) => {
-    const hitR = Math.max(10, strokeWidth * 2);
+    const hitR = eraseRadius || Math.max(10, strokeWidth * 2);
     const keep = annRef.current.items.filter((it) => {
       if (it.k === "stroke") {
         const pix = toPixels(it.points, width, height);
@@ -155,7 +215,7 @@ export function DrawCanvas({
     if (keep.length !== annRef.current.items.length) onCommit({ items: keep });
   };
 
-  const commitStroke = (pts: Pt[]) => {
+  const commitStroke = (pts: Pt[], pr: number[]) => {
     if (pts.length < 2) return;
     const frac = pts.map((p) => [
       Math.min(1, Math.max(0, p.x / width)),
@@ -169,6 +229,9 @@ export function DrawCanvas({
       width: strokeWidth,
       points: frac,
     };
+    if (tool === "pen" && pr.length === pts.length && hasVariation(pr)) {
+      stroke.pressures = pr.map((v) => Math.round(v * 100) / 100);
+    }
     onCommit({ items: [...annRef.current.items, stroke] });
   };
 
@@ -201,11 +264,13 @@ export function DrawCanvas({
       const p = { x: e.x, y: e.y };
       if (tool === "eraser") {
         eraseAt(p.x, p.y);
-        liveRef.current = null;
-        setLive(null);
+        liveRef.current = [p];
+        setLive([p]);
       } else {
         liveRef.current = [p];
-        setLive(liveRef.current);
+        livePrRef.current = [pressureRef.current];
+        setLive([p]);
+        setLivePr([pressureRef.current]);
       }
     })
     .onUpdate((e) => {
@@ -213,12 +278,19 @@ export function DrawCanvas({
       const p = { x: e.x, y: e.y };
       if (tool === "eraser") {
         eraseAt(p.x, p.y);
+        liveRef.current = [p];
+        setLive([p]);
         return;
       }
       const prev = liveRef.current;
       const next = !prev ? [p] : isShapeTool ? [prev[0], p] : [...prev, p];
       liveRef.current = next;
       setLive(next);
+      if (!isShapeTool) {
+        const nextPr = [...livePrRef.current, pressureRef.current];
+        livePrRef.current = nextPr;
+        setLivePr(nextPr);
+      }
     })
     .onEnd(() => {
       if (rejected.current) {
@@ -226,13 +298,16 @@ export function DrawCanvas({
         return;
       }
       const completed = liveRef.current;
+      const completedPr = livePrRef.current;
       liveRef.current = null;
+      livePrRef.current = [];
       setLive(null);
+      setLivePr([]);
       if (completed && tool !== "eraser") {
         if (isShapeTool && completed.length >= 2) {
           commitShape(completed[0], completed[completed.length - 1]);
         } else if (!isShapeTool) {
-          commitStroke(completed);
+          commitStroke(completed, completedPr);
         }
       }
     })
@@ -242,28 +317,41 @@ export function DrawCanvas({
 
   const livePath = useMemo(() => {
     if (!live) return null;
+    if (tool === "eraser") return null;
     if (isShapeTool && live.length >= 2) {
-      return shapePath(
-        {
-          k: "shape",
-          id: "live",
-          kind: tool as Shape["kind"],
-          color,
-          width: strokeWidth,
-          x0: live[0].x / width,
-          y0: live[0].y / height,
-          x1: live[1].x / width,
-          y1: live[1].y / height,
-        },
-        width,
-        height,
-      );
+      return {
+        fill: false,
+        path: shapePath(
+          {
+            k: "shape",
+            id: "live",
+            kind: tool as Shape["kind"],
+            color,
+            width: strokeWidth,
+            x0: live[0].x / width,
+            y0: live[0].y / height,
+            x1: live[1].x / width,
+            y1: live[1].y / height,
+          },
+          width,
+          height,
+        ),
+      };
     }
-    return smoothPath(live);
-  }, [live, isShapeTool, tool, color, strokeWidth, width, height]);
+    if (tool === "pen" && livePr.length === live.length && hasVariation(livePr)) {
+      return { fill: true, path: ribbonPath(live, strokeWidth, livePr) };
+    }
+    return { fill: false, path: smoothPath(live) };
+  }, [live, livePr, isShapeTool, tool, color, strokeWidth, width, height]);
+
+  const eraserCursor = tool === "eraser" && live ? live[live.length - 1] : null;
 
   return (
-    <View style={[styles.wrap, { width, height }]}>
+    <View
+      style={[styles.wrap, { width, height }]}
+      onPointerDown={onPointer}
+      onPointerMove={onPointer}
+    >
       <GestureDetector gesture={pan}>
         <Canvas style={{ width, height }}>
           {backgroundNode}
@@ -282,29 +370,48 @@ export function DrawCanvas({
           ))}
 
           <Group>
-            {strokePaths.map(({ s, path }) => (
-              <Path
-                key={s.id}
-                path={path}
-                style="stroke"
-                color={s.color}
-                strokeWidth={s.width}
-                strokeCap={s.tool === "highlighter" ? "square" : "round"}
-                strokeJoin="round"
-                opacity={s.tool === "highlighter" ? HL_OPACITY : 1}
-              />
-            ))}
+            {strokePaths.map(({ s, path, variable }) =>
+              variable ? (
+                <Path key={s.id} path={path} style="fill" color={s.color} />
+              ) : (
+                <Path
+                  key={s.id}
+                  path={path}
+                  style="stroke"
+                  color={s.color}
+                  strokeWidth={s.width}
+                  strokeCap={s.tool === "highlighter" ? "square" : "round"}
+                  strokeJoin="round"
+                  opacity={s.tool === "highlighter" ? HL_OPACITY : 1}
+                />
+              ),
+            )}
           </Group>
 
           {livePath ? (
-            <Path
-              path={livePath}
+            livePath.fill ? (
+              <Path path={livePath.path} style="fill" color={color} />
+            ) : (
+              <Path
+                path={livePath.path}
+                style="stroke"
+                color={color}
+                strokeWidth={strokeWidth}
+                strokeCap={tool === "highlighter" ? "square" : "round"}
+                strokeJoin="round"
+                opacity={tool === "highlighter" ? HL_OPACITY : 1}
+              />
+            )
+          ) : null}
+
+          {eraserCursor ? (
+            <Circle
+              cx={eraserCursor.x}
+              cy={eraserCursor.y}
+              r={eraseRadius}
               style="stroke"
-              color={color}
-              strokeWidth={strokeWidth}
-              strokeCap={tool === "highlighter" ? "square" : "round"}
-              strokeJoin="round"
-              opacity={tool === "highlighter" ? HL_OPACITY : 1}
+              strokeWidth={1.5}
+              color="#94a3b8"
             />
           ) : null}
         </Canvas>
