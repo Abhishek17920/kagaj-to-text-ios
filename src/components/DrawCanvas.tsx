@@ -103,6 +103,7 @@ export function DrawCanvas({
   backgroundNode,
 }: DrawCanvasProps) {
   const [live, setLive] = useState<Pt[] | null>(null);
+  const liveRef = useRef<Pt[] | null>(null);
   const rejected = useRef(false);
   const annRef = useRef(ann);
   annRef.current = ann;
@@ -200,9 +201,11 @@ export function DrawCanvas({
       const p = { x: e.x, y: e.y };
       if (tool === "eraser") {
         eraseAt(p.x, p.y);
+        liveRef.current = null;
         setLive(null);
       } else {
-        setLive([p]);
+        liveRef.current = [p];
+        setLive(liveRef.current);
       }
     })
     .onUpdate((e) => {
@@ -212,24 +215,26 @@ export function DrawCanvas({
         eraseAt(p.x, p.y);
         return;
       }
-      setLive((prev) => {
-        if (!prev) return [p];
-        if (isShapeTool) return [prev[0], p];
-        return [...prev, p];
-      });
+      const prev = liveRef.current;
+      const next = !prev ? [p] : isShapeTool ? [prev[0], p] : [...prev, p];
+      liveRef.current = next;
+      setLive(next);
     })
     .onEnd(() => {
       if (rejected.current) {
         rejected.current = false;
         return;
       }
-      setLive((prev) => {
-        if (prev && tool !== "eraser") {
-          if (isShapeTool && prev.length >= 2) commitShape(prev[0], prev[prev.length - 1]);
-          else if (!isShapeTool) commitStroke(prev);
+      const completed = liveRef.current;
+      liveRef.current = null;
+      setLive(null);
+      if (completed && tool !== "eraser") {
+        if (isShapeTool && completed.length >= 2) {
+          commitShape(completed[0], completed[completed.length - 1]);
+        } else if (!isShapeTool) {
+          commitStroke(completed);
         }
-        return null;
-      });
+      }
     })
     .onFinalize(() => {
       rejected.current = false;
