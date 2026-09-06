@@ -14,6 +14,7 @@ import { DrawTool, parseAnn, serialiseAnn } from "@/lib/annot";
 import { usePageInk } from "@/lib/usePageInk";
 import { PageSurface } from "./PageSurface";
 import { RegionPicker } from "./RegionPicker";
+import { ZoomableView } from "./ZoomableView";
 import { C } from "@/lib/theme";
 
 export interface PaneHandle {
@@ -45,6 +46,9 @@ export interface PdfPaneProps {
   /** Region-pick mode: drawing a box reports it instead of inking. */
   linkMode?: boolean;
   onPickRegion?: (page: number, r: { rx: number; ry: number; rw: number; rh: number }) => void;
+  /** Connector line: report the window-space centre of this link's region. */
+  trackLinkId?: string | null;
+  onLinkAnchor?: (xy: { x: number; y: number } | null) => void;
 }
 
 export const PdfPane = forwardRef<PaneHandle, PdfPaneProps>(function PdfPane(
@@ -65,6 +69,8 @@ export const PdfPane = forwardRef<PaneHandle, PdfPaneProps>(function PdfPane(
     onAccountRedirect,
     linkMode,
     onPickRegion,
+    trackLinkId,
+    onLinkAnchor,
   },
   ref,
 ) {
@@ -72,7 +78,29 @@ export const PdfPane = forwardRef<PaneHandle, PdfPaneProps>(function PdfPane(
   const listRef = useRef<FlatList<number>>(null);
   const [ratios, setRatios] = useState<Record<number, number>>({});
   const [activePage, setActivePage] = useState(1);
+  const [zoomCount, setZoomCount] = useState(0);
   const loaded = useRef<Set<number>>(new Set());
+  const bumpZoom = useCallback(
+    (z: boolean) => setZoomCount((n) => Math.max(0, n + (z ? 1 : -1))),
+    [],
+  );
+
+  // Connector-line anchor: poll the tracked region's window position.
+  const regionRefs = useRef<Map<string, View>>(new Map());
+  useEffect(() => {
+    if (!trackLinkId || !onLinkAnchor) return;
+    const tick = () => {
+      const v = regionRefs.current.get(trackLinkId);
+      if (!v) return onLinkAnchor(null);
+      v.measureInWindow((x, y, w, h) => onLinkAnchor({ x: x + w / 2, y: y + h / 2 }));
+    };
+    tick();
+    const h = setInterval(tick, 250);
+    return () => {
+      clearInterval(h);
+      onLinkAnchor(null);
+    };
+  }, [trackLinkId, onLinkAnchor]);
 
   const ink = usePageInk(async (key, ann) => {
     try {
@@ -137,6 +165,7 @@ export const PdfPane = forwardRef<PaneHandle, PdfPaneProps>(function PdfPane(
       viewabilityConfig={{ itemVisiblePercentThreshold: 30 }}
       initialNumToRender={2}
       windowSize={5}
+      scrollEnabled={zoomCount === 0}
       onScrollToIndexFailed={(info) => {
         setTimeout(() => {
           listRef.current?.scrollToOffset({
@@ -153,70 +182,78 @@ export const PdfPane = forwardRef<PaneHandle, PdfPaneProps>(function PdfPane(
         const onPage = (regions ?? []).filter((r) => r.pdf_page === page);
         return (
           <View style={[styles.pageCard, { width: pageW, height: pageH }]}>
-            <Image
-              style={StyleSheet.absoluteFill}
-              source={{ uri: Pdfs.pageImageUrl(pdfId, page), headers }}
-              contentFit="contain"
-              transition={120}
-              onLoad={(e) => {
-                const { width: iw, height: ih } = e.source;
-                if (iw && ih) {
-                  const r = ih / iw;
-                  setRatios((prev) => (prev[page] === r ? prev : { ...prev, [page]: r }));
-                }
-              }}
-            />
+            <ZoomableView width={pageW} height={pageH} onZoomChange={bumpZoom}>
+              <Image
+                style={StyleSheet.absoluteFill}
+                source={{ uri: Pdfs.pageImageUrl(pdfId, page), headers }}
+                contentFit="contain"
+                transition={120}
+                onLoad={(e) => {
+                  const { width: iw, height: ih } = e.source;
+                  if (iw && ih) {
+                    const r = ih / iw;
+                    setRatios((prev) => (prev[page] === r ? prev : { ...prev, [page]: r }));
+                  }
+                }}
+              />
 
-            {onPage.map((r) => (
-              <View
-                key={r.id}
-                pointerEvents="none"
-                style={[
-                  styles.region,
-                  {
-                    left: r.rx * pageW,
-                    top: r.ry * pageH,
-                    width: r.rw * pageW,
-                    height: r.rh * pageH,
-                  },
-                ]}
-              />
-            ))}
-            {flash ? (
-              <View
-                pointerEvents="none"
-                style={[
-                  styles.flash,
-                  {
-                    left: flash.rx * pageW,
-                    top: flash.ry * pageH,
-                    width: flash.rw * pageW,
-                    height: flash.rh * pageH,
-                  },
-                ]}
-              />
-            ) : null}
+              {onPage.map((r) => (
+                <View
+                  key={r.id}
+                  ref={(v) => {
+                    if (v) regionRefs.current.set(r.id, v);
+                    else regionRefs.current.delete(r.id);
+                  }}
+                  collapsable={false}
+                  pointerEvents="none"
+                  style={[
+                    styles.region,
+                    r.id === trackLinkId && styles.regionActive,
+                    {
+                      left: r.rx * pageW,
+                      top: r.ry * pageH,
+                      width: r.rw * pageW,
+                      height: r.rh * pageH,
+                    },
+                  ]}
+                />
+              ))}
+              {flash ? (
+                <View
+                  pointerEvents="none"
+                  style={[
+                    styles.flash,
+                    {
+                      left: flash.rx * pageW,
+                      top: flash.ry * pageH,
+                      width: flash.rw * pageW,
+                      height: flash.rh * pageH,
+                    },
+                  ]}
+                />
+              ) : null}
 
-            <View onTouchStart={onFocus} style={StyleSheet.absoluteFill}>
-              <PageSurface
-                width={pageW}
-                height={pageH}
-                ann={ink.annOf(page)}
-                onCommit={(next) => ink.commit(page, next)}
-                tool={tool}
-                color={color}
-                strokeWidth={strokeWidth}
-                pencilOnly={pencilOnly}
-              />
-            </View>
+              <View onTouchStart={onFocus} style={StyleSheet.absoluteFill}>
+                <PageSurface
+                  width={pageW}
+                  height={pageH}
+                  ann={ink.annOf(page)}
+                  onCommit={(next) => ink.commit(page, next)}
+                  tool={tool}
+                  color={color}
+                  strokeWidth={strokeWidth}
+                  pencilOnly={pencilOnly}
+                />
+              </View>
 
-            {linkMode ? (
-              <RegionPicker
-                width={pageW}
-                height={pageH}
-                onPick={(r) => onPickRegion?.(page, r)}
-              />
-            ) : null}
+              {linkMode ? (
+                <RegionPicker
+                  width={pageW}
+                  height={pageH}
+                  onPick={(r) => onPickRegion?.(page, r)}
+                />
+              ) : null}
+            </ZoomableView>
 
             <View style={styles.badge}>
               <Text style={styles.badgeText}>
@@ -244,6 +281,10 @@ const styles = StyleSheet.create({
     borderColor: "rgba(79,70,229,0.5)",
     backgroundColor: "rgba(79,70,229,0.08)",
     borderRadius: 4,
+  },
+  regionActive: {
+    borderColor: C.amber,
+    backgroundColor: "rgba(217,119,6,0.14)",
   },
   flash: {
     position: "absolute",

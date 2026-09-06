@@ -21,6 +21,7 @@ import { usePageInk } from "@/lib/usePageInk";
 import { PageSurface } from "./PageSurface";
 import { NotesLayer } from "./NotesLayer";
 import { NoteEditorModal } from "./NoteEditorModal";
+import { ZoomableView } from "./ZoomableView";
 import type { PaneHandle } from "./PdfPane";
 import { C } from "@/lib/theme";
 
@@ -46,6 +47,9 @@ export interface NotebookPaneProps {
   onNotesChange?: (notes: NoteOut[]) => void;
   onRequestLink?: (note: NoteOut) => void;
   onJumpToLink?: (link: NoteLinkOut) => void;
+  /** Connector line: track this note's card position. */
+  trackNoteId?: string | null;
+  onNoteAnchor?: (xy: { x: number; y: number } | null) => void;
 }
 
 export const NotebookPane = forwardRef<NotebookPaneHandle, NotebookPaneProps>(
@@ -66,6 +70,8 @@ export const NotebookPane = forwardRef<NotebookPaneHandle, NotebookPaneProps>(
       onNotesChange,
       onRequestLink,
       onJumpToLink,
+      trackNoteId,
+      onNoteAnchor,
     },
     ref,
   ) {
@@ -207,6 +213,11 @@ export const NotebookPane = forwardRef<NotebookPaneHandle, NotebookPaneProps>(
     );
 
     const notesActive = tool === "sticky" || tool === "select";
+    const [zoomCount, setZoomCount] = useState(0);
+    const bumpZoom = useCallback(
+      (z: boolean) => setZoomCount((n) => Math.max(0, n + (z ? 1 : -1))),
+      [],
+    );
 
     const data = useMemo(() => pages, [pages]);
 
@@ -220,6 +231,7 @@ export const NotebookPane = forwardRef<NotebookPaneHandle, NotebookPaneProps>(
           onViewableItemsChanged={onViewable}
           viewabilityConfig={{ itemVisiblePercentThreshold: 40 }}
           windowSize={5}
+          scrollEnabled={zoomCount === 0}
           onScrollToIndexFailed={(info) => {
             setTimeout(() => {
               listRef.current?.scrollToOffset({
@@ -230,29 +242,33 @@ export const NotebookPane = forwardRef<NotebookPaneHandle, NotebookPaneProps>(
           }}
           renderItem={({ item, index }) => (
             <View style={[styles.pageCard, { width: pageW, height: pageH }]}>
-              <View onTouchStart={onFocus} style={StyleSheet.absoluteFill}>
-                <PageSurface
-                  width={pageW}
-                  height={pageH}
-                  ann={ink.annOf(item.id)}
-                  onCommit={(next) => ink.commit(item.id, next)}
-                  tool={tool}
-                  color={color}
-                  strokeWidth={strokeWidth}
-                  pencilOnly={pencilOnly}
-                  rulingType={item.page_type || defaultRuling}
+              <ZoomableView width={pageW} height={pageH} onZoomChange={bumpZoom}>
+                <View onTouchStart={onFocus} style={StyleSheet.absoluteFill}>
+                  <PageSurface
+                    width={pageW}
+                    height={pageH}
+                    ann={ink.annOf(item.id)}
+                    onCommit={(next) => ink.commit(item.id, next)}
+                    tool={tool}
+                    color={color}
+                    strokeWidth={strokeWidth}
+                    pencilOnly={pencilOnly}
+                    rulingType={item.page_type || defaultRuling}
+                  />
+                </View>
+                <NotesLayer
+                  pageId={item.id}
+                  pageW={pageW}
+                  pageH={pageH}
+                  notes={notes}
+                  active={notesActive}
+                  onCreate={createNote}
+                  onMove={moveNote}
+                  onEdit={setEditing}
+                  trackNoteId={trackNoteId}
+                  onNoteAnchor={onNoteAnchor}
                 />
-              </View>
-              <NotesLayer
-                pageId={item.id}
-                pageW={pageW}
-                pageH={pageH}
-                notes={notes}
-                active={notesActive}
-                onCreate={createNote}
-                onMove={moveNote}
-                onEdit={setEditing}
-              />
+              </ZoomableView>
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>
                   {index + 1} / {pages.length}

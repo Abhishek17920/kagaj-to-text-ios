@@ -16,6 +16,7 @@ import { ErrorNote, Loading, Screen } from "@/components/ui";
 import { NotebookPane, type NotebookPaneHandle } from "@/components/NotebookPane";
 import { PdfPane, type PaneHandle } from "@/components/PdfPane";
 import { InkToolbar } from "@/components/InkToolbar";
+import { ConnectorLine, type XY } from "@/components/ConnectorLine";
 import { C, INK_COLORS, PEN_WIDTHS } from "@/lib/theme";
 
 type Flash = { page: number; rx: number; ry: number; rw: number; rh: number };
@@ -45,6 +46,10 @@ export default function Workspace() {
   const [linkingNote, setLinkingNote] = useState<NoteOut | null>(null);
   const [flash, setFlash] = useState<Flash | null>(null);
   const [connector, setConnector] = useState<string | null>(null);
+  const [activeLink, setActiveLink] = useState<{ id: string; noteId: string } | null>(null);
+  const [noteAnchor, setNoteAnchor] = useState<XY | null>(null);
+  const [regionAnchor, setRegionAnchor] = useState<XY | null>(null);
+  const connTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const nbRef = useRef<NotebookPaneHandle>(null);
   const pdfRef = useRef<PaneHandle>(null);
@@ -108,10 +113,15 @@ export default function Workspace() {
       setFlash({ page: link.pdf_page, rx: link.rx, ry: link.ry, rw: link.rw, rh: link.rh });
       const owner = notes.find((n) => n.links.some((l) => l.id === link.id));
       setConnector(`${(owner?.body || "Note").slice(0, 40)}  ↔  PDF page ${link.pdf_page}`);
-      setTimeout(() => {
+      if (owner && isWide) setActiveLink({ id: link.id, noteId: owner.id });
+      if (connTimer.current) clearTimeout(connTimer.current);
+      connTimer.current = setTimeout(() => {
         setFlash(null);
         setConnector(null);
-      }, 2800);
+        setActiveLink(null);
+        setNoteAnchor(null);
+        setRegionAnchor(null);
+      }, 4000);
     },
     [pdfId, isWide, notes],
   );
@@ -138,6 +148,8 @@ export default function Workspace() {
       onNotesChange={setNotes}
       onRequestLink={startLink}
       onJumpToLink={jumpToLink}
+      trackNoteId={activeLink?.noteId ?? null}
+      onNoteAnchor={setNoteAnchor}
       onAccountRedirect={() => router.push("/(app)/account")}
     />
   );
@@ -158,6 +170,8 @@ export default function Workspace() {
       highlight={flash}
       linkMode={!!linkingNote}
       onPickRegion={pickRegion}
+      trackLinkId={activeLink?.id ?? null}
+      onLinkAnchor={setRegionAnchor}
       onAccountRedirect={() => router.push("/(app)/account")}
     />
   ) : (
@@ -249,6 +263,8 @@ export default function Workspace() {
           </View>
         ) : null}
       </View>
+
+      {isWide && activeLink ? <ConnectorLine from={noteAnchor} to={regionAnchor} /> : null}
 
       <View style={styles.focusHint}>
         <Text style={styles.focusHintText}>

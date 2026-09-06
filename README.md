@@ -20,8 +20,10 @@ as the web version. Same backend (`kagaj-to-text-back`), same login, same files.
 | **PDF bookmarks** (★ a page, jump list) stored in `meta_json` | `pdf/[id].tsx` → `Pdfs.setMeta` |
 | **PDF offline summary** (extractive, no LLM) | `pdf/[id].tsx` → `Pdfs.summary` |
 | **Sticky notes** on notebook pages — drag to move, edit body + colour, delete | `src/components/NotesLayer.tsx`, `NoteEditorModal.tsx`, `Notes.*` |
+| **Pinch-zoom + pan** on any page (1x–4x, notebook & PDF); pinch back to reset | `src/components/ZoomableView.tsx` |
 | **Split workspace** — notebook + PDF together (iPad = two panes, iPhone = tab switch) | `app/(app)/workspace/[id].tsx` |
 | **Link a note → PDF region** (drag a box), **jump to region** (flash), **unlink** | `RegionPicker.tsx`, `workspace/[id].tsx`, `Notes.link` / `Notes.unlink` |
+| **Connector line** note ↔ region (iPad split view, on "Jump"; tracks scrolling) | `src/components/ConnectorLine.tsx` |
 | Link regions outlined on their PDF pages | `PdfPane` `regions` prop |
 | Chat: user search, direct messages, groups (create + members) with `@username` | `app/(app)/chat/*` |
 | Chat: **edit / delete** own group messages (long‑press) | `chat/thread.tsx` → `Chat.editGroup` / `Chat.deleteGroup` |
@@ -87,10 +89,16 @@ Set the bundle id in `app.json` (`ios.bundleIdentifier`, currently
 
 ## Parity notes / deliberate simplifications
 
-- **Connector line**: on the web a line is drawn between a note and its linked
-  PDF region. Here (two independently‑scrolling panes) "Jump" scrolls the PDF to
-  the region and **flashes** it, with a connector banner naming the pair. A
-  literal drawn line needs cross‑pane geometry tracking — not done yet.
+- **Connector line**: drawn in the iPad split view when you tap "Jump" on a
+  note's link — a line between the note card and its PDF region, re‑measured
+  every 250 ms so it follows scrolling, auto‑clears after 4 s. On iPhone (one
+  pane at a time) only the flash + banner show.
+- **PDF still renders as a flat image** (`/pdfs/{id}/pages/{n}/render` PNG, needs
+  poppler on the backend). No selectable text / search / copy — add
+  `react-native-pdf` for that. Pinch‑zoom helps read dense pages but the raster
+  softens past ~3x.
+- **No voice typing** (speech‑to‑text) yet — needs a native speech module +
+  `expo prebuild`.
 - **Drawing** uses velocity‑independent constant width (same as the web). For
   pressure + tilt like PencilKit, add a dev‑client module such as
   `react-native-pencil-kit` and swap it behind `DrawCanvas`.

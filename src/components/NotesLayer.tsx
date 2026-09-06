@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import type { NoteOut } from "@/lib/api";
@@ -17,6 +17,9 @@ export interface NotesLayerProps {
   onCreate: (pageId: string, fx: number, fy: number) => void;
   onMove: (noteId: string, fx: number, fy: number) => void;
   onEdit: (note: NoteOut) => void;
+  /** Connector line: report the window-space centre of this note's card. */
+  trackNoteId?: string | null;
+  onNoteAnchor?: (xy: { x: number; y: number } | null) => void;
 }
 
 function NoteCard({
@@ -26,6 +29,8 @@ function NoteCard({
   active,
   onMove,
   onEdit,
+  track,
+  onAnchor,
 }: {
   note: NoteOut;
   pageW: number;
@@ -33,11 +38,28 @@ function NoteCard({
   active: boolean;
   onMove: (id: string, fx: number, fy: number) => void;
   onEdit: (n: NoteOut) => void;
+  track: boolean;
+  onAnchor?: (xy: { x: number; y: number } | null) => void;
 }) {
   const baseX = frac(note.x) * pageW;
   const baseY = frac(note.y) * pageH;
   const [drag, setDrag] = useState({ x: 0, y: 0 });
   const start = useRef({ x: 0, y: 0 });
+  const viewRef = useRef<View>(null);
+
+  useEffect(() => {
+    if (!track || !onAnchor) return;
+    const tick = () =>
+      viewRef.current?.measureInWindow((x, y, w, h) =>
+        onAnchor({ x: x + w / 2, y: y + h / 2 }),
+      );
+    tick();
+    const h = setInterval(tick, 250);
+    return () => {
+      clearInterval(h);
+      onAnchor(null);
+    };
+  }, [track, onAnchor]);
 
   const pan = Gesture.Pan()
     .enabled(active)
@@ -56,14 +78,17 @@ function NoteCard({
   return (
     <GestureDetector gesture={pan}>
       <Pressable
+        ref={viewRef}
+        collapsable={false}
         onPress={() => onEdit(note)}
         style={[
           styles.card,
+          track && styles.cardActive,
           {
             left: baseX + drag.x,
             top: baseY + drag.y,
             width: Math.max(120, (note.w || 0.28) * (note.w > 1.5 ? 1 : pageW)),
-            borderColor: note.color || "#f4d35e",
+            borderColor: track ? C.amber : note.color || "#f4d35e",
           },
         ]}
       >
@@ -89,6 +114,8 @@ export function NotesLayer({
   onCreate,
   onMove,
   onEdit,
+  trackNoteId,
+  onNoteAnchor,
 }: NotesLayerProps) {
   const mine = notes.filter((n) => n.page_id === pageId);
 
@@ -116,6 +143,8 @@ export function NotesLayer({
           active={active}
           onMove={onMove}
           onEdit={onEdit}
+          track={n.id === trackNoteId}
+          onAnchor={onNoteAnchor}
         />
       ))}
     </View>
@@ -135,6 +164,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
   },
+  cardActive: { borderWidth: 2, shadowOpacity: 0.28 },
   body: { fontSize: 12, color: C.ink },
   linkBadge: {
     marginTop: 6,
