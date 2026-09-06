@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import * as Speech from "expo-speech";
 import { Pdfs, loadToken, type PdfOut } from "@/lib/api";
 import { ErrorNote, Loading, Screen } from "@/components/ui";
 import { PdfPane, type PaneHandle } from "@/components/PdfPane";
@@ -58,6 +59,27 @@ export default function PdfAnnotator() {
   const [summary, setSummary] = useState<string | null>(null);
   const [summaryBusy, setSummaryBusy] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+
+  const toggleSpeak = useCallback(() => {
+    if (speaking) {
+      Speech.stop();
+      setSpeaking(false);
+      return;
+    }
+    if (!summary) return;
+    setSpeaking(true);
+    Speech.speak(summary, {
+      language: "en-IN",
+      onDone: () => setSpeaking(false),
+      onStopped: () => setSpeaking(false),
+      onError: () => setSpeaking(false),
+    });
+  }, [speaking, summary]);
+
+  useEffect(() => () => {
+    void Speech.stop();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -183,7 +205,16 @@ export default function PdfAnnotator() {
         <Screen>
           <View style={styles.head}>
             <Text style={styles.title}>Summary</Text>
-            <Pressable onPress={() => setSummaryOpen(false)}><Text style={styles.h}>Done</Text></Pressable>
+            <View style={{ flexDirection: "row", gap: 16 }}>
+              {summary && !summaryBusy ? (
+                <Pressable onPress={toggleSpeak}>
+                  <Text style={styles.h}>{speaking ? "⏹ Stop" : "▶ Read aloud"}</Text>
+                </Pressable>
+              ) : null}
+              <Pressable onPress={() => { Speech.stop(); setSpeaking(false); setSummaryOpen(false); }}>
+                <Text style={styles.h}>Done</Text>
+              </Pressable>
+            </View>
           </View>
           {summaryBusy ? (
             <Loading label="Reading the document…" />

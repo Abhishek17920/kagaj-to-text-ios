@@ -26,7 +26,9 @@ as the web version. Same backend (`kagaj-to-text-back`), same login, same files.
 | **Sticky notes** on notebook pages — drag to move, edit body + colour, delete | `src/components/NotesLayer.tsx`, `NoteEditorModal.tsx`, `Notes.*` |
 | **Pinch-zoom + pan** on any page (1x–4x, notebook & PDF); pinch back to reset | `src/components/ZoomableView.tsx` |
 | **Split workspace** — notebook + PDF together (iPad = two panes, iPhone = tab switch) | `app/(app)/workspace/[id].tsx` |
-| **Link a note → PDF region** (drag a box), **jump to region** (flash), **unlink** | `RegionPicker.tsx`, `workspace/[id].tsx`, `Notes.link` / `Notes.unlink` |
+| **🔗 Link mode** in the split view — drag a box on the PDF and a linked note drops onto the notebook page (no need to pre-make a note); plus the old note→region flow | `workspace/[id].tsx`, `RegionPicker.tsx`, `Notes.link` |
+| **Connected regions panel** ("Links" button) — every link listed with a page tag, editable annotation text, Jump and Unlink | `workspace/[id].tsx` |
+| **Read aloud** the PDF summary (`expo-speech` TTS) | `pdf/[id].tsx` |
 | **Connector line** note ↔ region (iPad split view, on "Jump"; tracks scrolling) | `src/components/ConnectorLine.tsx` |
 | Link regions outlined on their PDF pages | `PdfPane` `regions` prop |
 | Chat: user search, direct messages, groups (create + members) with `@username` | `app/(app)/chat/*` |

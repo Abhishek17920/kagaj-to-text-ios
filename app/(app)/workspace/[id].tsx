@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
   Notebooks,
@@ -50,6 +59,9 @@ export default function Workspace() {
 
   const [notes, setNotes] = useState<NoteOut[]>([]);
   const [linkingNote, setLinkingNote] = useState<NoteOut | null>(null);
+  const [linkMode, setLinkMode] = useState(false);
+  const [linksOpen, setLinksOpen] = useState(false);
+  const [nbPageIdx, setNbPageIdx] = useState(0);
   const [flash, setFlash] = useState<Flash | null>(null);
   const [connector, setConnector] = useState<string | null>(null);
   const [activeLink, setActiveLink] = useState<{ id: string; noteId: string } | null>(null);
@@ -98,16 +110,37 @@ export default function Workspace() {
 
   const pickRegion = useCallback(
     async (page: number, r: { rx: number; ry: number; rw: number; rh: number }) => {
-      if (!linkingNote || !pdfId) return;
+      if (!pdfId) return;
       try {
-        await Notes.link(linkingNote.id, { pdf_id: pdfId, pdf_page: page, ...r });
+        if (linkingNote) {
+          // link an existing note to this region
+          await Notes.link(linkingNote.id, { pdf_id: pdfId, pdf_page: page, ...r });
+        } else if (linkMode) {
+          // direct: drop a linked note on the current notebook page
+          const pageId = nb?.pages[nbPageIdx]?.id ?? nb?.pages[0]?.id ?? null;
+          const note = await Notes.create(id, {
+            page_id: pageId,
+            body: "",
+            display_mode: "linked",
+            color: "#f4d35e",
+            x: 0.06 + (notes.length % 4) * 0.02,
+            y: 0.06 + (notes.length % 6) * 0.03,
+            w: 0.3,
+            h: 0.14,
+          });
+          await Notes.link(note.id, { pdf_id: pdfId, pdf_page: page, ...r });
+        }
       } catch {
         /* ignore */
       }
       setLinkingNote(null);
+      setLinkMode(false);
+      setFlash({ page, ...r });
+      if (connTimer.current) clearTimeout(connTimer.current);
+      connTimer.current = setTimeout(() => setFlash(null), 2200);
       nbRef.current?.reloadNotes();
     },
-    [linkingNote, pdfId],
+    [linkingNote, linkMode, pdfId, id, nb, nbPageIdx, notes.length],
   );
 
   const jumpToLink = useCallback(
@@ -132,6 +165,33 @@ export default function Workspace() {
     [pdfId, isWide, notes],
   );
 
+  const unlink = useCallback(
+    async (noteId: string, linkId: string) => {
+      try {
+        await Notes.unlink(noteId, linkId);
+      } catch {
+        /* ignore */
+      }
+      nbRef.current?.reloadNotes();
+    },
+    [],
+  );
+
+  const editLinkedBody = useCallback((noteId: string, body: string) => {
+    setNotes((prev) => prev.map((n) => (n.id === noteId ? { ...n, body } : n)));
+    Notes.patch(noteId, { body }).catch(() => {});
+  }, []);
+
+  const linkCards = useMemo(
+    () =>
+      notes.flatMap((n) =>
+        n.links
+          .filter((l) => l.pdf_id === pdfId)
+          .map((l) => ({ link: l, noteId: n.id, body: n.body })),
+      ),
+    [notes, pdfId],
+  );
+
   if (err && !nb) return <Screen><ErrorNote message={err} /></Screen>;
   if (!nb) return <Screen><Loading label="Opening split view…" /></Screen>;
 
@@ -151,6 +211,7 @@ export default function Workspace() {
       strokeWidth={strokeWidth}
       pencilOnly={pencilOnly}
       onFocus={() => setFocused("notebook")}
+      onActiveIndexChange={setNbPageIdx}
       onNotesChange={setNotes}
       onRequestLink={startLink}
       onJumpToLink={jumpToLink}
@@ -174,7 +235,7 @@ export default function Workspace() {
       onFocus={() => setFocused("pdf")}
       regions={regions}
       highlight={flash}
-      linkMode={!!linkingNote}
+      linkMode={linkMode || !!linkingNote}
       onPickRegion={pickRegion}
       trackLinkId={activeLink?.id ?? null}
       onLinkAnchor={setRegionAnchor}
@@ -188,7 +249,29 @@ export default function Workspace() {
 
   return (
     <Screen pad={false}>
-      <Stack.Screen options={{ title: nb.title }} />
+      <Stack.Screen
+        options={{
+          title: nb.title,
+          headerRight: () => (
+            <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
+              <Pressable
+                onPress={() => {
+                  setLinkMode((v) => !v);
+                  setLinkingNote(null);
+                  setFocused("pdf");
+                  if (!isWide) setTab("pdf");
+                }}
+                hitSlop={6}
+              >
+                <Text style={[styles.hBtn, linkMode && { color: C.amber }]}>🔗 Link</Text>
+              </Pressable>
+              <Pressable onPress={() => setLinksOpen(true)} hitSlop={6}>
+                <Text style={styles.hBtn}>Links {linkCards.length ? `(${linkCards.length})` : ""}</Text>
+              </Pressable>
+            </View>
+          ),
+        }}
+      />
 
       {pdfs.length > 1 ? (
         <ScrollView
@@ -255,12 +338,14 @@ export default function Workspace() {
         </Text>
       </View>
 
-      {linkingNote ? (
+      {linkingNote || linkMode ? (
         <View style={styles.banner}>
           <Text style={styles.bannerText} numberOfLines={1}>
-            Linking: "{linkingNote.body || "note"}" — draw a box on the PDF
+            {linkingNote
+              ? `Linking "${linkingNote.body || "note"}" — drag a box on the PDF`
+              : "Link mode — drag a box on the PDF; a linked note appears in the notebook"}
           </Text>
-          <Pressable onPress={() => setLinkingNote(null)} hitSlop={8}>
+          <Pressable onPress={() => { setLinkingNote(null); setLinkMode(false); }} hitSlop={8}>
             <Text style={styles.bannerCancel}>Cancel</Text>
           </Pressable>
         </View>
@@ -293,6 +378,57 @@ export default function Workspace() {
       </View>
 
       {isWide && activeLink ? <ConnectorLine from={noteAnchor} to={regionAnchor} /> : null}
+
+      <Modal
+        visible={linksOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setLinksOpen(false)}
+      >
+        <Screen>
+          <View style={styles.panelHead}>
+            <Text style={styles.panelTitle}>Connected PDF regions ({linkCards.length})</Text>
+            <Pressable onPress={() => setLinksOpen(false)}>
+              <Text style={styles.hBtn}>Done</Text>
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={{ gap: 10, paddingBottom: 24 }}>
+            {linkCards.length === 0 ? (
+              <Text style={styles.muted}>
+                No links yet. Tap 🔗 Link, then drag a box on the PDF.
+              </Text>
+            ) : null}
+            {linkCards.map(({ link, noteId, body }) => (
+              <View key={link.id} style={styles.card}>
+                <View style={styles.cardTop}>
+                  <Text style={styles.cardPage}>PDF page {link.pdf_page}</Text>
+                  <View style={{ flexDirection: "row", gap: 14 }}>
+                    <Pressable
+                      onPress={() => {
+                        setLinksOpen(false);
+                        jumpToLink(link);
+                      }}
+                    >
+                      <Text style={styles.cardAction}>Jump</Text>
+                    </Pressable>
+                    <Pressable onPress={() => unlink(noteId, link.id)}>
+                      <Text style={[styles.cardAction, { color: C.danger }]}>Unlink</Text>
+                    </Pressable>
+                  </View>
+                </View>
+                <TextInput
+                  defaultValue={body}
+                  onChangeText={(t) => editLinkedBody(noteId, t)}
+                  placeholder="Type the linked annotation…"
+                  placeholderTextColor={C.sub}
+                  multiline
+                  style={styles.cardInput}
+                />
+              </View>
+            ))}
+          </ScrollView>
+        </Screen>
+      </Modal>
     </Screen>
   );
 }
@@ -329,4 +465,33 @@ const styles = StyleSheet.create({
   bannerCancel: { color: "#fff", fontWeight: "800", fontSize: 12, textDecorationLine: "underline" },
   focusHint: { alignItems: "center", paddingVertical: 2, backgroundColor: C.card },
   focusHintText: { fontSize: 10, color: C.sub, fontWeight: "600" },
+  hBtn: { color: C.brand, fontWeight: "700", fontSize: 14 },
+  panelHead: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  panelTitle: { fontSize: 16, fontWeight: "800", color: C.ink },
+  card: {
+    backgroundColor: C.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: C.line,
+    padding: 12,
+    gap: 8,
+  },
+  cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  cardPage: { fontWeight: "700", color: C.ink, fontSize: 12 },
+  cardAction: { color: C.brand, fontWeight: "700", fontSize: 13 },
+  cardInput: {
+    minHeight: 54,
+    borderWidth: 1,
+    borderColor: C.line,
+    borderRadius: 8,
+    padding: 8,
+    fontSize: 13,
+    textAlignVertical: "top",
+    color: C.ink,
+  },
 });
