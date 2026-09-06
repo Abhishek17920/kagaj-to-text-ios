@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Kagaj to Text",
+    "slug": "kagaj-to-text",
+    "scheme": "kagajtotext",
+    "version": "1.0.0",
+    "orientation": "default",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bknetworks.kagajtotext",
+      "requireFullScreen": false,
+      "infoPlist": {
+        "UISupportsDocumentBrowser": true,
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-splash-screen",
+      "expo-document-picker",
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
