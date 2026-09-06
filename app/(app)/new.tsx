@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { Notebooks, SubscriptionRequiredError, type Catalog } from "@/lib/api";
 import { coverColor } from "@/lib/cover";
 import { Button, Field, Loading, Screen } from "@/components/ui";
+import { RulingThumb } from "@/components/Ruling";
 import { C } from "@/lib/theme";
 
 export default function NewNotebook() {
@@ -60,21 +61,26 @@ export default function NewNotebook() {
 
         <View style={{ gap: 10 }}>
           <Text style={styles.section}>Page ruling</Text>
-          <View style={{ gap: 8 }}>
-            {catalog.page_types.map((p) => (
-              <Pressable
-                key={p.id}
-                onPress={() => setPageType(p.id)}
-                style={[styles.ruleRow, pageType === p.id && styles.ruleSelected]}
-              >
-                <View style={[styles.radio, pageType === p.id && styles.radioOn]} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.ruleName}>{p.name}</Text>
-                  <Text style={styles.ruleDesc}>{p.desc}</Text>
-                </View>
-              </Pressable>
-            ))}
+          <View style={styles.ruleGrid}>
+            {catalog.page_types.map((p) => {
+              const on = pageType === p.id;
+              return (
+                <Pressable
+                  key={p.id}
+                  onPress={() => setPageType(p.id)}
+                  style={[styles.ruleCard, on && styles.ruleSelected]}
+                >
+                  <RulingThumb type={p.id} width={60} height={78} />
+                  <Text style={[styles.ruleName, on && { color: C.brand }]} numberOfLines={1}>
+                    {p.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
+          <Text style={styles.ruleDesc}>
+            {catalog.page_types.find((p) => p.id === pageType)?.desc}
+          </Text>
         </View>
 
         {err ? <Text style={styles.err}>{err}</Text> : null}
@@ -98,20 +104,19 @@ const styles = StyleSheet.create({
   },
   selected: { borderColor: C.ink },
   coverName: { color: "#fff", fontWeight: "700", fontSize: 12 },
-  ruleRow: {
-    flexDirection: "row",
+  ruleGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  ruleCard: {
+    width: 84,
     alignItems: "center",
-    gap: 12,
-    padding: 12,
+    gap: 6,
+    padding: 8,
     borderRadius: 12,
     backgroundColor: C.card,
-    borderWidth: 1,
-    borderColor: C.line,
+    borderWidth: 2,
+    borderColor: "transparent",
   },
   ruleSelected: { borderColor: C.brand, backgroundColor: C.brandSoft },
-  radio: { width: 20, height: 20, borderRadius: 999, borderWidth: 2, borderColor: C.sub },
-  radioOn: { borderColor: C.brand, backgroundColor: C.brand },
-  ruleName: { fontWeight: "700", color: C.ink },
-  ruleDesc: { color: C.sub, fontSize: 12, marginTop: 1 },
+  ruleName: { fontWeight: "700", color: C.ink, fontSize: 12 },
+  ruleDesc: { color: C.sub, fontSize: 12, marginTop: 2 },
   err: { color: C.danger },
 });

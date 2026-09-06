@@ -227,6 +227,28 @@ export default function Workspace() {
         </View>
       ) : null}
 
+      <InkToolbar
+        tool={tool}
+        color={color}
+        strokeWidth={strokeWidth}
+        pencilOnly={pencilOnly}
+        canUndo={!!paneRef()?.canUndo()}
+        canRedo={!!paneRef()?.canRedo()}
+        onTool={setTool}
+        onColor={setColor}
+        onWidth={setStrokeWidth}
+        onPencilOnly={setPencilOnly}
+        onUndo={() => { paneRef()?.undo(); force((n) => n + 1); }}
+        onRedo={() => { paneRef()?.redo(); force((n) => n + 1); }}
+        onClear={() => paneRef()?.clear()}
+      />
+
+      <View style={styles.focusHint}>
+        <Text style={styles.focusHintText}>
+          Tools act on: {focused === "notebook" ? "Notebook" : "PDF"}
+        </Text>
+      </View>
+
       {linkingNote ? (
         <View style={styles.banner}>
           <Text style={styles.bannerText} numberOfLines={1}>
@@ -265,28 +287,6 @@ export default function Workspace() {
       </View>
 
       {isWide && activeLink ? <ConnectorLine from={noteAnchor} to={regionAnchor} /> : null}
-
-      <View style={styles.focusHint}>
-        <Text style={styles.focusHintText}>
-          Tools act on: {focused === "notebook" ? "Notebook" : "PDF"}
-        </Text>
-      </View>
-
-      <InkToolbar
-        tool={tool}
-        color={color}
-        strokeWidth={strokeWidth}
-        pencilOnly={pencilOnly}
-        canUndo={!!paneRef()?.canUndo()}
-        canRedo={!!paneRef()?.canRedo()}
-        onTool={setTool}
-        onColor={setColor}
-        onWidth={setStrokeWidth}
-        onPencilOnly={setPencilOnly}
-        onUndo={() => { paneRef()?.undo(); force((n) => n + 1); }}
-        onRedo={() => { paneRef()?.redo(); force((n) => n + 1); }}
-        onClear={() => paneRef()?.clear()}
-      />
     </Screen>
   );
 }

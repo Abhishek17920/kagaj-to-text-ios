@@ -161,20 +161,6 @@ export default function NotebookEditor() {
         }}
       />
 
-      <NotebookPane
-        ref={paneRef}
-        notebookId={id}
-        pages={pages}
-        defaultRuling={nb.page_type}
-        width={width}
-        tool={tool}
-        color={color}
-        strokeWidth={strokeWidth}
-        pencilOnly={pencilOnly}
-        onSavingChange={setSaving}
-        onAccountRedirect={() => router.push("/(app)/account")}
-      />
-
       <InkToolbar
         tool={tool}
         color={color}
@@ -195,6 +181,20 @@ export default function NotebookEditor() {
           force((n) => n + 1);
         }}
         onClear={() => paneRef.current?.clear()}
+      />
+
+      <NotebookPane
+        ref={paneRef}
+        notebookId={id}
+        pages={pages}
+        defaultRuling={nb.page_type}
+        width={width}
+        tool={tool}
+        color={color}
+        strokeWidth={strokeWidth}
+        pencilOnly={pencilOnly}
+        onSavingChange={setSaving}
+        onAccountRedirect={() => router.push("/(app)/account")}
       />
 
       {/* PDF drawer */}

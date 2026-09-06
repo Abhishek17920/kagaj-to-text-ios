@@ -1,5 +1,6 @@
 import React from "react";
-import { Group, Line, vec } from "@shopify/react-native-skia";
+import { View } from "react-native";
+import { Canvas, Group, Line, Rect, vec } from "@shopify/react-native-skia";
 
 /**
  * Page rulings, drawn as Skia nodes so they live in the same <Canvas> as the
@@ -89,4 +90,34 @@ export function Ruling({ type, w, h }: { type: string; w: number; h: number }) {
   }
 
   return <Group>{nodes}</Group>;
+}
+
+/** A small white "sheet of paper" preview of a ruling, for pickers. */
+export function RulingThumb({
+  type,
+  width = 52,
+  height = 68,
+}: {
+  type: string;
+  width?: number;
+  height?: number;
+}) {
+  return (
+    <View
+      style={{
+        width,
+        height,
+        borderRadius: 6,
+        overflow: "hidden",
+        borderWidth: 1,
+        borderColor: "#e2e8f0",
+        backgroundColor: "#fff",
+      }}
+    >
+      <Canvas style={{ width, height }}>
+        <Rect x={0} y={0} width={width} height={height} color="#ffffff" />
+        <Ruling type={type} w={width} h={height} />
+      </Canvas>
+    </View>
+  );
 }

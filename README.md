@@ -11,7 +11,9 @@ as the web version. Same backend (`kagaj-to-text-back`), same login, same files.
 | Subscription (monthly / yearly demo checkout), 402 gate → Account screen | `app/(app)/account.tsx` |
 | Dashboard: notebook grid, covers, page rulings on create | `app/(app)/dashboard.tsx`, `app/(app)/new.tsx` |
 | Notebook editor: infinite vertical page scroll, page‑number badge, add page | `app/(app)/notebook/[id].tsx` |
-| **Apple Pencil** drawing (Skia), pen / highlighter / eraser / line / arrow / box / oval / text | `src/components/DrawCanvas.tsx`, `PageSurface.tsx` |
+| **Apple Pencil** drawing (Skia), pen / highlighter / eraser / line / arrow / box / oval / text / note / move | `src/components/DrawCanvas.tsx`, `PageSurface.tsx` |
+| Compact top toolbar — tools row + animated style row (colours / widths) that slides in for drawing tools | `src/components/InkToolbar.tsx` |
+| New-notebook picker shows a live **ruling preview** thumbnail per style | `src/components/Ruling.tsx` `RulingThumb`, `app/(app)/new.tsx` |
 | **Palm rejection** — "Pencil only" toggle: ignores finger input (`pointerType !== STYLUS`) | `DrawCanvas.tsx` (`pan.onBegin`) |
 | Per‑page undo / redo / clear | shared via `src/lib/usePageInk.ts` |
 | **Drag / reorder pages** (↑ ↓ sheet) | `notebook/[id].tsx` reorder modal → `Notebooks.reorder` |

@@ -227,6 +227,7 @@ export const NotebookPane = forwardRef<NotebookPaneHandle, NotebookPaneProps>(
           ref={listRef}
           data={data}
           keyExtractor={(p) => p.id}
+          style={{ flex: 1 }}
           contentContainerStyle={{ padding: 12, gap: 16, alignItems: "center" }}
           onViewableItemsChanged={onViewable}
           viewabilityConfig={{ itemVisiblePercentThreshold: 40 }}

@@ -116,21 +116,6 @@ export default function PdfAnnotator() {
         }}
       />
 
-      <PdfPane
-        ref={paneRef}
-        pdfId={id}
-        pageCount={doc.page_count}
-        token={token}
-        width={width}
-        tool={tool}
-        color={color}
-        strokeWidth={strokeWidth}
-        pencilOnly={pencilOnly}
-        onActivePageChange={setActivePage}
-        onSavingChange={setSaving}
-        onAccountRedirect={() => router.push("/(app)/account")}
-      />
-
       <InkToolbar
         tool={tool}
         color={color}
@@ -145,6 +130,21 @@ export default function PdfAnnotator() {
         onUndo={() => { paneRef.current?.undo(); force((n) => n + 1); }}
         onRedo={() => { paneRef.current?.redo(); force((n) => n + 1); }}
         onClear={() => paneRef.current?.clear()}
+      />
+
+      <PdfPane
+        ref={paneRef}
+        pdfId={id}
+        pageCount={doc.page_count}
+        token={token}
+        width={width}
+        tool={tool}
+        color={color}
+        strokeWidth={strokeWidth}
+        pencilOnly={pencilOnly}
+        onActivePageChange={setActivePage}
+        onSavingChange={setSaving}
+        onAccountRedirect={() => router.push("/(app)/account")}
       />
 
       <Modal visible={bmOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setBmOpen(false)}>

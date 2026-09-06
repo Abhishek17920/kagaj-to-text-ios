@@ -160,6 +160,7 @@ export const PdfPane = forwardRef<PaneHandle, PdfPaneProps>(function PdfPane(
       ref={listRef}
       data={pages}
       keyExtractor={(p) => String(p)}
+      style={{ flex: 1 }}
       contentContainerStyle={{ padding: 12, gap: 16, alignItems: "center" }}
       onViewableItemsChanged={onViewable}
       viewabilityConfig={{ itemVisiblePercentThreshold: 30 }}
