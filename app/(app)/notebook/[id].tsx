@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -88,14 +89,14 @@ export default function NotebookEditor() {
   }, [id, pdfs]);
 
   const pickPdf = useCallback(async () => {
-    const res = await DocumentPicker.getDocumentAsync({
-      type: ["application/pdf", "image/*"],
-      copyToCacheDirectory: true,
-    });
-    if (res.canceled || !res.assets?.[0]) return;
-    const a = res.assets[0];
-    setUploading(true);
     try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: ["application/pdf", "image/*"],
+        copyToCacheDirectory: true,
+      });
+      if (res.canceled || !res.assets?.[0]) return;
+      const a = res.assets[0];
+      setUploading(true);
       const doc = await Pdfs.upload(id, {
         uri: a.uri,
         name: a.name ?? "upload.pdf",
@@ -103,7 +104,11 @@ export default function NotebookEditor() {
       });
       setPdfs((prev) => [doc, ...(prev ?? [])]);
     } catch (e) {
-      if (e instanceof SubscriptionRequiredError) router.push("/(app)/account");
+      if (e instanceof SubscriptionRequiredError) {
+        router.push("/(app)/account");
+      } else {
+        Alert.alert("Upload failed", e instanceof Error ? e.message : "Could not upload this file.");
+      }
     } finally {
       setUploading(false);
     }

@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import { File } from "expo-file-system";
 import { resolveApiBase } from "./config";
 
 /* ------------------------------------------------------------------ *
@@ -299,8 +300,8 @@ export const Pdfs = {
   listAll: () => api<PdfOut[]>("/pdfs"),
   upload: (notebookId: string, file: { uri: string; name: string; type: string }) => {
     const form = new FormData();
-    // React Native's FormData accepts this { uri, name, type } shape.
-    form.append("file", file as unknown as Blob);
+    // Expo SDK 57's fetch requires a real Blob/File; legacy RN URI parts throw.
+    form.append("file", new File(file.uri), file.name);
     return api<PdfOut>(`/notebooks/${notebookId}/pdfs`, { method: "POST", form });
   },
   pageImageUrl: (pdfId: string, page: number) =>
