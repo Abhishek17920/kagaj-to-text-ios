@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
   Notebooks,
@@ -24,6 +25,7 @@ import { ErrorNote, Loading, Screen } from "@/components/ui";
 import { NotebookPane, type NotebookPaneHandle } from "@/components/NotebookPane";
 import { PdfPane, type PaneHandle } from "@/components/PdfPane";
 import { InkToolbar } from "@/components/InkToolbar";
+import { FloatingTools } from "@/components/FloatingTools";
 import { ConnectorLine, type XY } from "@/components/ConnectorLine";
 import { useDrawTools } from "@/lib/useDrawTools";
 import { C } from "@/lib/theme";
@@ -62,6 +64,8 @@ export default function Workspace() {
   const [linkMode, setLinkMode] = useState(false);
   const [linksOpen, setLinksOpen] = useState(false);
   const [nbPageIdx, setNbPageIdx] = useState(0);
+  const [splitPct, setSplitPct] = useState(0.5);
+  const splitStart = useRef(0.5);
   const [flash, setFlash] = useState<Flash | null>(null);
   const [connector, setConnector] = useState<string | null>(null);
   const [activeLink, setActiveLink] = useState<{ id: string; noteId: string } | null>(null);
@@ -195,9 +199,21 @@ export default function Workspace() {
   if (err && !nb) return <Screen><ErrorNote message={err} /></Screen>;
   if (!nb) return <Screen><Loading label="Opening split view…" /></Screen>;
 
-  const panW = isWide ? Math.floor((width - 1) / 2) : width;
+  const DIV = 10;
+  const nbW = isWide ? Math.round((width - DIV) * splitPct) : width;
+  const pdfW = isWide ? width - DIV - nbW : width;
   const showNb = isWide || tab === "notebook";
   const showPdf = isWide || tab === "pdf";
+
+  const divider = Gesture.Pan()
+    .runOnJS(true)
+    .onBegin(() => {
+      splitStart.current = splitPct;
+    })
+    .onUpdate((e) => {
+      const next = splitStart.current + e.translationX / width;
+      setSplitPct(Math.max(0.28, Math.min(0.72, next)));
+    });
 
   const notebookPane = (
     <NotebookPane
@@ -205,7 +221,7 @@ export default function Workspace() {
       notebookId={id}
       pages={nb.pages}
       defaultRuling={nb.page_type}
-      width={panW}
+      width={nbW}
       tool={tool}
       color={color}
       strokeWidth={strokeWidth}
@@ -227,7 +243,7 @@ export default function Workspace() {
       pdfId={activePdf.id}
       pageCount={activePdf.page_count}
       token={token}
-      width={panW}
+      width={pdfW}
       tool={tool}
       color={color}
       strokeWidth={strokeWidth}
@@ -360,22 +376,38 @@ export default function Workspace() {
       <View style={{ flex: 1, flexDirection: "row" }}>
         {showNb ? (
           <View
-            style={{ width: isWide ? panW : "100%", flex: isWide ? undefined : 1 }}
+            style={{ width: isWide ? nbW : "100%", flex: isWide ? undefined : 1 }}
             onTouchStart={() => setFocused("notebook")}
           >
             {notebookPane}
           </View>
         ) : null}
-        {isWide ? <View style={styles.divider} /> : null}
+        {isWide ? (
+          <GestureDetector gesture={divider}>
+            <View style={styles.divider}>
+              <View style={styles.dividerGrip} />
+            </View>
+          </GestureDetector>
+        ) : null}
         {showPdf ? (
           <View
-            style={{ width: isWide ? panW : "100%", flex: isWide ? undefined : 1 }}
+            style={{ width: isWide ? pdfW : "100%", flex: isWide ? undefined : 1 }}
             onTouchStart={() => setFocused("pdf")}
           >
             {pdfPane}
           </View>
         ) : null}
       </View>
+
+      <FloatingTools
+        tool={tool}
+        color={color}
+        canUndo={!!paneRef()?.canUndo()}
+        canRedo={!!paneRef()?.canRedo()}
+        onTool={setTool}
+        onUndo={() => { paneRef()?.undo(); force((n) => n + 1); }}
+        onRedo={() => { paneRef()?.redo(); force((n) => n + 1); }}
+      />
 
       {isWide && activeLink ? <ConnectorLine from={noteAnchor} to={regionAnchor} /> : null}
 
@@ -452,7 +484,16 @@ const styles = StyleSheet.create({
   tab: { flex: 1, paddingVertical: 10, alignItems: "center", borderBottomWidth: 2, borderColor: "transparent" },
   tabOn: { borderColor: C.brand },
   tabText: { fontWeight: "700", color: C.sub },
-  divider: { width: 1, backgroundColor: C.line },
+  divider: {
+    width: 10,
+    backgroundColor: C.bg,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: C.line,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dividerGrip: { width: 3, height: 44, borderRadius: 999, backgroundColor: C.sub },
   banner: {
     flexDirection: "row",
     alignItems: "center",

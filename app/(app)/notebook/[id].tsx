@@ -23,6 +23,7 @@ import {
 import { ErrorNote, Loading, Screen } from "@/components/ui";
 import { NotebookPane, type NotebookPaneHandle } from "@/components/NotebookPane";
 import { InkToolbar } from "@/components/InkToolbar";
+import { FloatingTools } from "@/components/FloatingTools";
 import { useDrawTools } from "@/lib/useDrawTools";
 import { C } from "@/lib/theme";
 
@@ -201,6 +202,16 @@ export default function NotebookEditor() {
         pencilOnly={pencilOnly}
         onSavingChange={setSaving}
         onAccountRedirect={() => router.push("/(app)/account")}
+      />
+
+      <FloatingTools
+        tool={tool}
+        color={color}
+        canUndo={!!paneRef.current?.canUndo()}
+        canRedo={!!paneRef.current?.canRedo()}
+        onTool={setTool}
+        onUndo={() => { paneRef.current?.undo(); force((n) => n + 1); }}
+        onRedo={() => { paneRef.current?.redo(); force((n) => n + 1); }}
       />
 
       {/* PDF drawer */}

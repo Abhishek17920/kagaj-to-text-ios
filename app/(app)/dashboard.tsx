@@ -19,7 +19,8 @@ export default function Dashboard() {
   const router = useRouter();
   const { user, subscription } = useAuth();
   const { width } = useWindowDimensions();
-  const cols = width > 900 ? 4 : width > 600 ? 3 : 2;
+  const TILE = 116; // fixed cover width — thumbnails stay the same size on any screen
+  const cols = Math.max(2, Math.floor((width - 24) / (TILE + 14)));
 
   const [books, setBooks] = useState<NotebookOut[] | null>(null);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
@@ -62,8 +63,8 @@ export default function Dashboard() {
         key={cols}
         numColumns={cols}
         keyExtractor={(b) => b.id}
-        contentContainerStyle={{ padding: 12, gap: 12 }}
-        columnWrapperStyle={{ gap: 12 }}
+        contentContainerStyle={{ padding: 12, gap: 14 }}
+        columnWrapperStyle={{ gap: 14 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.brand} />}
         ListHeaderComponent={
           <View style={{ gap: 12, paddingBottom: 4 }}>
@@ -104,19 +105,26 @@ export default function Dashboard() {
           const cov = coverById(catalog.covers, item.cover);
           return (
             <Pressable
-              style={styles.card}
+              style={[styles.card, { width: TILE }]}
               onPress={() => router.push({ pathname: "/(app)/notebook/[id]", params: { id: item.id } })}
             >
-              <View style={[styles.cover, { backgroundColor: coverColor(cov?.value) }]}>
+              <View
+                style={[
+                  styles.cover,
+                  { width: TILE, height: Math.round(TILE * 1.33), backgroundColor: coverColor(cov?.value) },
+                ]}
+              >
                 <View style={styles.spine} />
-                <Text style={styles.coverLabel} numberOfLines={2}>
+                <Text style={styles.coverLabel} numberOfLines={3}>
                   {item.title}
                 </Text>
               </View>
               <Text style={styles.cardTitle} numberOfLines={1}>
                 {item.title}
               </Text>
-              <Text style={styles.cardMeta}>{cov?.name ?? item.cover}</Text>
+              <Text style={styles.cardMeta} numberOfLines={1}>
+                {cov?.name ?? item.cover}
+              </Text>
             </Pressable>
           );
         }}
@@ -136,17 +144,20 @@ const styles = StyleSheet.create({
   pillText: { fontWeight: "700", color: C.ink, fontSize: 13 },
   banner: { padding: 12, borderRadius: 12 },
   bannerText: { fontWeight: "700", fontSize: 13 },
-  card: { flex: 1, gap: 4 },
+  card: { gap: 3 },
   cover: {
-    aspectRatio: 0.75,
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 10,
+    padding: 9,
     justifyContent: "flex-end",
     overflow: "hidden",
+    shadowColor: "#0f172a",
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
-  spine: { position: "absolute", left: 10, top: 0, bottom: 0, width: 3, backgroundColor: "rgba(255,255,255,0.35)" },
-  coverLabel: { color: "#fff", fontWeight: "800", fontSize: 15 },
-  cardTitle: { fontWeight: "700", color: C.ink, fontSize: 14 },
-  cardMeta: { color: C.sub, fontSize: 12 },
+  spine: { position: "absolute", left: 7, top: 0, bottom: 0, width: 2.5, backgroundColor: "rgba(255,255,255,0.35)" },
+  coverLabel: { color: "#fff", fontWeight: "800", fontSize: 12 },
+  cardTitle: { fontWeight: "700", color: C.ink, fontSize: 12 },
+  cardMeta: { color: C.sub, fontSize: 10 },
   empty: { color: C.sub, textAlign: "center", padding: 40 },
 });
